@@ -15,6 +15,54 @@ Both scripts are **idempotent**: re-running after `git pull` rebuilds the fronte
 re-runs migrations, and restarts the service, without touching an existing `.env`,
 database, or admin password.
 
+This repo is **private** — the first `git clone` on a new machine will prompt you to sign
+in to GitHub (browser prompt for HTTPS, or use an SSH key/PAT if you'd rather).
+
+## Quick checklist (what you actually do, step by step)
+
+### Windows
+
+1. Install [Git for Windows](https://git-scm.com/download/win) if it's not already there.
+2. Open PowerShell **as Administrator**.
+3. Run:
+   ```powershell
+   git clone https://github.com/ahmeddz39/Attendance-check-point.git C:\Apps\Attendance-check-point
+   cd C:\Apps\Attendance-check-point
+   .\deploy\setup-windows.ps1
+   ```
+4. If it just installed Node.js and/or PostgreSQL for you, it'll tell you to close the
+   window and run the last line again (PATH needs a fresh shell to pick them up) — that's
+   the only case you run it twice.
+5. It prints the LAN URL plus a generated admin login and DB password once — **copy them
+   down**.
+6. Open the LAN URL in a browser, log in. Done — see [Windows](#windows) below for
+   optional parameters (pinning a password instead of generating one, etc.).
+
+### Linux (Ubuntu server/VM)
+
+1. Make sure the VM/server's network adapter is on the same physical LAN as the ZKTeco
+   scanners — not an isolated or NAT'd network (see below for why).
+2. SSH in, then run:
+   ```bash
+   sudo mkdir -p /opt/attendance-check-point
+   sudo chown "$USER" /opt/attendance-check-point
+   git clone https://github.com/ahmeddz39/Attendance-check-point.git /opt/attendance-check-point
+   cd /opt/attendance-check-point
+   sudo bash deploy/setup-vm.sh
+   ```
+3. It prints the URL plus a generated admin login and DB password once — copy them down.
+4. Open that URL, log in. Done.
+5. Optional but recommended — nightly backups:
+   ```bash
+   sudo crontab -e
+   # add: 0 2 * * * /opt/attendance-check-point/deploy/backup-db.sh >> /var/log/attendance-backup.log 2>&1
+   ```
+
+That's the entire list either way: one clone, one script, copy the printed credentials
+somewhere safe. Nothing to edit, no `.env` to fill in by hand. Everything from here down
+is reference detail for that same process — options, what each script does internally,
+and day-to-day commands.
+
 ## Why network placement matters
 
 `backend/src/services/deviceDiscovery.js` and `attendanceDeviceAdapter.js` talk directly
@@ -32,7 +80,7 @@ and internet access for the one-time dependency install (Node.js/PostgreSQL via
 `winget`, if not already present).
 
 ```powershell
-git clone <this-repo-url> C:\Apps\Attendance-check-point
+git clone https://github.com/ahmeddz39/Attendance-check-point.git C:\Apps\Attendance-check-point
 cd C:\Apps\Attendance-check-point
 .\deploy\setup-windows.ps1
 ```
@@ -92,7 +140,7 @@ package install (`apt-get`).
 ```bash
 sudo mkdir -p /opt/attendance-check-point
 sudo chown "$USER" /opt/attendance-check-point
-git clone <this-repo-url> /opt/attendance-check-point
+git clone https://github.com/ahmeddz39/Attendance-check-point.git /opt/attendance-check-point
 cd /opt/attendance-check-point
 sudo bash deploy/setup-vm.sh
 ```
