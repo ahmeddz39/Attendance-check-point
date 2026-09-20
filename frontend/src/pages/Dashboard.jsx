@@ -1,135 +1,209 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts'
 import StatCard from '../components/StatCard'
-import { Users, TrendingUp, Activity, FileText } from 'lucide-react'
+import PageHeader from '../components/PageHeader'
+import EmptyState from '../components/EmptyState'
+import { SkeletonStatCard, SkeletonBlock } from '../components/Skeleton'
+import { localeFor, formatDateTime } from '../i18n/formatDate'
+import useAutoRefresh from '../hooks/useAutoRefresh'
+import { UserCheck, UserX, Clock3, Router as RouterIcon, Wallet, Inbox } from 'lucide-react'
 
-const fmt = (n) => n >= 1000 ? (n/1000).toFixed(1)+'k' : String(Math.round(n))
-const fmtCurrency = (n) => '$' + fmt(n)
+const currentMonth = () => new Date().toISOString().slice(0, 7)
+
+const fmtMoney = (n) => Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 }) + ' DZD'
+
+const pctDelta = (today, yesterday) => {
+  if (yesterday === undefined || yesterday === null || yesterday === 0) return null
+  return Math.round(((today - yesterday) / yesterday) * 100)
+}
 
 export default function Dashboard() {
+  const { t, i18n } = useTranslation()
   const { authFetch, user } = useAuth()
-  const [summary, setSummary] = useState(null)
-  const [metrics, setMetrics] = useState([])
+  const [trend, setTrend] = useState([])
+  const [salary, setSalary] = useState(null)
+  const [devices, setDevices] = useState([])
+  const [recentLogs, setRecentLogs] = useState([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
+  const load = () => {
     Promise.all([
-      authFetch('/api/analytics/summary').then(r => r?.json()),
-      authFetch('/api/analytics/metrics?name=active_users&interval=day').then(r => r?.json()),
-    ]).then(([s, m]) => {
-      setSummary(s?.data)
-      // Format chart data
-      const rows = (m?.data || []).map(d => ({
-        date: new Date(d.period).toLocaleDateString('en', { month:'short', day:'numeric' }),
-        users: Math.round(d.average),
-      }))
-      setMetrics(rows)
+      authFetch('/api/attendance/reports/trend?days=7').then(r => r?.json()),
+      authFetch(`/api/attendance/salary?month=${currentMonth()}`).then(r => r?.json()),
+      authFetch('/api/devices').then(r => r?.json()),
+      authFetch('/api/attendance/logs').then(r => r?.json()),
+    ]).then(([trendRes, s, d, l]) => {
+      setTrend(trendRes?.data?.rows || [])
+      setSalary(s?.data)
+      setDevices(d?.data || [])
+      setRecentLogs((l?.data || []).slice(0, 8))
     }).catch(err => console.error('Dashboard load error:', err))
       .finally(() => setLoading(false))
-  }, [authFetch])
+  }
 
-  const activeUsers = summary?.metrics?.find(m => m.name === 'active_users')
-  const revenue     = summary?.metrics?.find(m => m.name === 'revenue')
-  const signups     = summary?.metrics?.find(m => m.name === 'signups')
+  useEffect(load, [authFetch])
+  useAutoRefresh(load, 60000)
 
-  if (loading) return <div style={styles.loading}>Loading dashboard…</div>
+  const locale = localeFor(i18n.language)
+  const hour = new Date().getHours()
+  const greetingKey = hour < 12 ? 'greetingMorning' : hour < 17 ? 'greetingAfternoon' : 'greetingEvening'
+  const today = trend[trend.length - 1]
+  const yesterday = trend[trend.length - 2]
+  const devicesOnline = devices.filter(d => d.status === 'online').length
+
+  const header = (
+    <PageHeader
+      title={t(`dashboard.${greetingKey}`, { name: user?.firstName })}
+      subtitle={today ? new Date(today.workDay).toLocaleDateString(locale, { weekday: 'long', month: 'long', day: 'numeric' }) : t('dashboard.subtitleFallback')}
+    />
+  )
+
+  if (loading) {
+    return (
+      <div style={styles.page} className="fade-in">
+        {header}
+        <div className="stat-grid">
+          {Array.from({ length: 4 }).map((_, i) => <SkeletonStatCard key={i} />)}
+        </div>
+        <SkeletonBlock height={280} />
+        <SkeletonBlock height={220} />
+      </div>
+    )
+  }
+
+  const chartData = trend.map(row => ({
+    date: new Date(row.workDay).toLocaleDateString(locale, { month: 'short', day: 'numeric' }),
+    present: row.present,
+    incomplete: row.incomplete,
+    absent: row.absent,
+  }))
+
+  const initialsOf = (first, last) => `${(first || '?')[0]}${(last || '')[0] || ''}`.toUpperCase()
 
   return (
     <div style={styles.page} className="fade-in">
-      <div style={styles.header}>
-        <div>
-          <h1 style={styles.h1}>Good {greeting()}, {user?.firstName} 👋</h1>
-          <p style={styles.sub}>Here's what's happening in the last 30 days.</p>
-        </div>
+      {header}
+
+      {/* Today */}
+      <div className="stat-grid">
+        <StatCard
+          label={t('dashboard.presentToday')} value={today?.present ?? '—'}
+          sub={t('dashboard.ofScheduled', { count: today?.scheduled ?? 0 })}
+          icon={UserCheck} tone="accent"
+          delta={today && yesterday ? pctDelta(today.present, yesterday.present) : null}
+        />
+        <StatCard
+          label={t('dashboard.checkedInNoCheckout')} value={today?.incomplete ?? '—'}
+          sub={t('dashboard.stillOnSite')} icon={Clock3} tone="warn"
+        />
+        <StatCard
+          label={t('dashboard.absentToday')} value={today?.absent ?? '—'}
+          sub={t('dashboard.noPunchYet')} icon={UserX} tone="danger"
+          delta={today && yesterday ? pctDelta(today.absent, yesterday.absent) : null}
+          invertDelta
+        />
+        <StatCard
+          label={t('dashboard.devicesOnline')} value={`${devicesOnline}/${devices.length}`}
+          sub={t('dashboard.attendanceTerminals')} icon={RouterIcon} tone="accent2"
+        />
       </div>
 
-      {/* Stat cards */}
-      <div style={styles.grid4}>
-        <StatCard label="Active Users"  value={fmt(activeUsers?.total  || 0)} sub="last 30 days" icon={Users}     accent="var(--accent)" />
-        <StatCard label="Revenue"       value={fmtCurrency(revenue?.total || 0)} sub="last 30 days" icon={TrendingUp} accent="var(--accent2)" />
-        <StatCard label="New Signups"   value={fmt(signups?.total || 0)}  sub="last 30 days" icon={Activity}   accent="var(--warn)" />
-        <StatCard label="System Users"  value={summary?.users?.active_users || '—'} sub={`${summary?.users?.new_users || 0} new`} icon={FileText} accent="var(--muted)" />
-      </div>
+      {/* This month */}
+      {salary?.totals && (
+        <div style={styles.section}>
+          <span className="section-label">{t('dashboard.thisMonth')}</span>
+          <div className="stat-grid" style={{ marginTop: 10 }}>
+            <StatCard label={t('dashboard.payrollMtd')} value={fmtMoney(salary.totals.estimatedSalary)} sub={currentMonth()} icon={Wallet} tone="accent" />
+            <StatCard label={t('dashboard.presentDaysMtd')} value={salary.totals.presentDays} sub={t('dashboard.employeesCount', { count: salary.totals.employees })} icon={UserCheck} tone="accent2" />
+            <StatCard label={t('dashboard.absentDaysMtd')} value={salary.totals.absentDays} sub={t('dashboard.scheduledWorkdaysMissed')} icon={UserX} tone="danger" />
+            <StatCard label={t('dashboard.hoursWorkedMtd')} value={Number(salary.totals.workedHours).toFixed(0)} sub={t('dashboard.totalHours')} icon={Clock3} tone="warn" />
+          </div>
+        </div>
+      )}
 
       {/* Chart */}
-      <div style={styles.chartCard}>
+      <div className="card" style={styles.chartCard}>
         <div style={styles.chartHeader}>
-          <span style={styles.chartTitle}>Daily Active Users</span>
-          <span style={styles.chartBadge}>30d</span>
+          <span style={styles.chartTitle}>{t('dashboard.attendanceLast7Days')}</span>
+          <span className="badge badge-muted">7d</span>
         </div>
         <ResponsiveContainer width="100%" height={240}>
-          <AreaChart data={metrics} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+          <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <defs>
-              <linearGradient id="ug" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor="#4ade80" stopOpacity={0.25} />
-                <stop offset="95%" stopColor="#4ade80" stopOpacity={0} />
+              <linearGradient id="pg" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%"  stopColor="var(--accent)" stopOpacity={0.35} />
+                <stop offset="95%" stopColor="var(--accent)" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="ig" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%"  stopColor="var(--warn)" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="var(--warn)" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="ag" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%"  stopColor="var(--danger)" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="var(--danger)" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid stroke="#1e2430" strokeDasharray="3 3" />
-            <XAxis dataKey="date" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} interval={4} />
-            <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
+            <CartesianGrid stroke="var(--chart-line)" strokeDasharray="3 3" />
+            <XAxis dataKey="date" tick={{ fill: 'var(--chart-label)', fontSize: 11 }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fill: 'var(--chart-label)', fontSize: 11 }} axisLine={false} tickLine={false} />
             <Tooltip
-              contentStyle={{ background: '#13161b', border: '1px solid #252a35', borderRadius: 8, fontSize: 13 }}
-              labelStyle={{ color: '#e8eaf0' }} itemStyle={{ color: '#4ade80' }}
+              contentStyle={{ background:'var(--tooltip-bg)', border:'1px solid var(--tooltip-border)', borderRadius:8, fontSize:13 }}
+              labelStyle={{ color:'var(--tooltip-text)' }}
             />
-            <Area type="monotone" dataKey="users" stroke="#4ade80" strokeWidth={2} fill="url(#ug)" dot={false} />
+            <Legend wrapperStyle={{ fontSize: 12 }} />
+            <Area type="monotone" dataKey="absent" stroke="var(--danger)" strokeWidth={1.5} fill="url(#ag)" name={t('common.status.absent')} />
+            <Area type="monotone" dataKey="incomplete" stroke="var(--warn)" strokeWidth={1.5} fill="url(#ig)" name={t('common.status.incomplete')} />
+            <Area type="monotone" dataKey="present" stroke="var(--accent)" strokeWidth={2.5} fill="url(#pg)" name={t('common.status.present')} />
           </AreaChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Top metrics table */}
-      <div style={styles.chartCard}>
+      {/* Recent activity */}
+      <div className="card" style={styles.chartCard}>
         <div style={styles.chartHeader}>
-          <span style={styles.chartTitle}>Metric Summary</span>
+          <span style={styles.chartTitle}>{t('dashboard.recentPunches')}</span>
         </div>
-        <table style={styles.table}>
-          <thead>
-            <tr>{['Metric','Total','Average','Data Points'].map(h => (
-              <th key={h} style={styles.th}>{h}</th>
-            ))}</tr>
-          </thead>
-          <tbody>
-            {(summary?.metrics || []).map((m, i) => (
-              <tr key={m.name} style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)' }}>
-                <td style={styles.td}><span style={styles.metricName}>{m.name.replace(/_/g,' ')}</span></td>
-                <td style={styles.td}>{Number(m.total).toLocaleString()}</td>
-                <td style={styles.td}>{Number(m.average).toLocaleString()}</td>
-                <td style={styles.td}>{m.data_points}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        {recentLogs.length === 0 ? (
+          <EmptyState icon={Inbox}>{t('dashboard.noPunchesYet')}</EmptyState>
+        ) : (
+          <div style={styles.activityList}>
+            {recentLogs.map((log, i) => {
+              const name = log.first_name ? `${log.first_name} ${log.last_name || ''}` : t('dashboard.deviceIdLabel', { id: log.device_user_id })
+              return (
+                <div key={log.id || i} style={{...styles.activityRow, borderBottom: i === recentLogs.length - 1 ? 'none' : '1px solid var(--border)'}}>
+                  <div style={styles.activityAvatar}>{initialsOf(log.first_name, log.last_name)}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={styles.activityName}>{name}</div>
+                    <div style={styles.activityMuted}>{log.device_name || '-'}</div>
+                  </div>
+                  <div style={styles.activityTime}>{formatDateTime(log.event_time, i18n.language)}</div>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
-const greeting = () => {
-  const h = new Date().getHours()
-  return h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening'
-}
-
 const styles = {
   page:    { display: 'flex', flexDirection: 'column', gap: 24 },
-  loading: { color: 'var(--muted)', padding: 40 },
-  header:  { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' },
-  h1:      { fontSize: 24, fontWeight: 600, letterSpacing: '-0.5px' },
-  sub:     { color: 'var(--muted)', fontSize: 14, marginTop: 4 },
-  grid4:   { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 },
-  chartCard: {
-    background: 'var(--bg2)', border: '1px solid var(--border)',
-    borderRadius: 'var(--radius)', padding: '20px 24px',
-  },
+  section: { display: 'flex', flexDirection: 'column' },
+  chartCard: { padding: '20px 24px' },
   chartHeader: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 },
   chartTitle:  { fontSize: 14, fontWeight: 600 },
-  chartBadge:  {
-    fontSize: 11, padding: '2px 8px', borderRadius: 20,
-    background: 'var(--bg3)', color: 'var(--muted)', border: '1px solid var(--border)',
+  activityList: { display: 'flex', flexDirection: 'column' },
+  activityRow: { display: 'flex', alignItems: 'center', gap: 12, padding: '11px 2px' },
+  activityAvatar: {
+    width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+    background: 'linear-gradient(135deg, var(--accent), var(--accent2))',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: 11, fontWeight: 700, color: 'var(--on-accent)',
   },
-  table: { width: '100%', borderCollapse: 'collapse' },
-  th: { textAlign: 'left', fontSize: 11, color: 'var(--muted)', padding: '8px 12px',
-        textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--border)' },
-  td: { padding: '11px 12px', fontSize: 13, color: 'var(--text)', borderBottom: '1px solid rgba(255,255,255,0.03)' },
-  metricName: { textTransform: 'capitalize', fontWeight: 500 },
+  activityName: { fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+  activityMuted: { fontSize: 12, color: 'var(--muted)', marginTop: 1 },
+  activityTime: { fontSize: 12, fontFamily: 'var(--mono)', color: 'var(--muted)', flexShrink: 0, whiteSpace: 'nowrap' },
 }

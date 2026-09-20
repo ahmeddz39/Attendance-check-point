@@ -1,10 +1,20 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { CompanyProvider } from './context/CompanyContext'
 import Login     from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Analytics from './pages/Analytics'
 import Reports   from './pages/Reports'
 import Users     from './pages/Users'
+import Devices   from './pages/Devices'
+import Employees from './pages/Employees'
+import AttendanceLogs from './pages/AttendanceLogs'
+import Salary from './pages/Salary'
+import Settings from './pages/Settings'
+import SettingsGeneral    from './pages/settings/SettingsGeneral'
+import SettingsShift      from './pages/settings/SettingsShift'
+import SettingsAppearance from './pages/settings/SettingsAppearance'
+import SettingsLanguage   from './pages/settings/SettingsLanguage'
 import Layout    from './components/Layout'
 
 const Private = ({ children, roles }) => {
@@ -20,11 +30,23 @@ export default function App() {
     <AuthProvider>
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="/" element={<Private><Layout /></Private>}>
+        <Route path="/" element={<Private><CompanyProvider><Layout /></CompanyProvider></Private>}>
           <Route index         element={<Dashboard />} />
           <Route path="analytics" element={<Analytics />} />
           <Route path="reports"   element={<Reports />} />
-          <Route path="users"     element={<Private roles={['admin','analyst']}><Users /></Private>} />
+          <Route path="employees" element={<Private roles={['admin','analyst']}><Employees /></Private>} />
+          <Route path="attendance" element={<Private roles={['admin','analyst']}><AttendanceLogs /></Private>} />
+          <Route path="salary"    element={<Private roles={['admin','analyst']}><Salary /></Private>} />
+          <Route path="settings" element={<Private roles={['admin','analyst']}><Settings /></Private>}>
+            <Route index          element={<Private roles={['admin']}><SettingsGeneral /></Private>} />
+            <Route path="users"      element={<Private roles={['admin','analyst']}><Users /></Private>} />
+            <Route path="devices"    element={<Private roles={['admin','analyst']}><Devices /></Private>} />
+            <Route path="shift"      element={<Private roles={['admin','analyst']}><SettingsShift /></Private>} />
+            <Route path="appearance" element={<SettingsAppearance />} />
+            <Route path="language"   element={<SettingsLanguage />} />
+          </Route>
+          <Route path="users"   element={<Navigate to="/settings/users" replace />} />
+          <Route path="devices" element={<Navigate to="/settings/devices" replace />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

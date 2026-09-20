@@ -13,10 +13,11 @@ const getMetrics = async (req, res) => {
 
   const params = [];
   const conditions = ['1=1'];
+  const nextParam = () => params.length + 2;
 
-  if (name) { params.push(name); conditions.push(`name = $${params.length}`); }
-  if (from) { params.push(from); conditions.push(`recorded_at >= $${params.length}`); }
-  if (to)   { params.push(to);   conditions.push(`recorded_at <= $${params.length}`); }
+  if (name) { params.push(name); conditions.push(`name = $${nextParam() - 1}`); }
+  if (from) { params.push(from); conditions.push(`recorded_at >= $${nextParam() - 1}`); }
+  if (to)   { params.push(to);   conditions.push(`recorded_at <= $${nextParam() - 1}`); }
 
   const where = conditions.join(' AND ');
 

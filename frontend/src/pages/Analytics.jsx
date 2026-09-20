@@ -1,124 +1,136 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
+import SegmentedControl from '../components/SegmentedControl'
+import PageHeader from '../components/PageHeader'
+import EmptyState from '../components/EmptyState'
+import { SkeletonBlock } from '../components/Skeleton'
+import { localeFor } from '../i18n/formatDate'
+import useAutoRefresh from '../hooks/useAutoRefresh'
+import { BarChart2 } from 'lucide-react'
 import {
   LineChart, Line, BarChart, Bar,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend
 } from 'recharts'
 
-const METRICS   = ['active_users', 'revenue', 'signups']
-const INTERVALS = ['day', 'week', 'month']
-const COLORS    = { active_users: '#4ade80', revenue: '#22d3ee', signups: '#fbbf24' }
+const RANGE_VALUES = [7, 14, 30, 90]
 
 export default function Analytics() {
+  const { t, i18n } = useTranslation()
   const { authFetch } = useAuth()
-  const [data, setData]         = useState([])
-  const [metric, setMetric]     = useState('active_users')
-  const [interval, setInterval] = useState('day')
+  const [days, setDays] = useState(30)
   const [chartType, setChartType] = useState('line')
-  const [loading, setLoading]   = useState(false)
+  const [rows, setRows] = useState([])
+  const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    setLoading(true)
-    authFetch(`/api/analytics/metrics?name=${metric}&interval=${interval}`)
+  const RANGES = RANGE_VALUES.map(v => ({ value: v, label: `${v}d` }))
+  const CHART_TYPES = [
+    { value: 'line', label: t('trends.chartTypeLine') },
+    { value: 'bar',  label: t('trends.chartTypeBar') },
+  ]
+  const SERIES = {
+    present:    { label: t('common.status.present'),    color: 'var(--accent)' },
+    incomplete: { label: t('common.status.incomplete'), color: 'var(--warn)' },
+    absent:     { label: t('common.status.absent'),     color: 'var(--danger)' },
+    rate:       { label: t('trends.attendanceRate'), color: 'var(--accent2)' },
+  }
+
+  const load = (silent = false) => {
+    if (!silent) setLoading(true)
+    const locale = localeFor(i18n.language)
+    authFetch(`/api/attendance/reports/trend?days=${days}`)
       .then(r => r?.json())
       .then(d => {
-        const rows = (d?.data || []).map(r => ({
-          date: new Date(r.period).toLocaleDateString('en', {
-            month: 'short', day: interval === 'month' ? undefined : 'numeric'
-          }),
-          value: Math.round(parseFloat(r.average)),
-          total: Math.round(parseFloat(r.total)),
+        const data = (d?.data?.rows || []).map(r => ({
+          date: new Date(r.workDay).toLocaleDateString(locale, { month: 'short', day: 'numeric' }),
+          present: r.present,
+          incomplete: r.incomplete,
+          absent: r.absent,
+          rate: r.rate,
+          scheduled: r.scheduled,
         }))
-        setData(rows)
+        setRows(data)
       })
       .catch(err => {
-        console.error('Analytics load error:', err)
-        setData([])
+        console.error('Trends load error:', err)
+        setRows([])
       })
       .finally(() => setLoading(false))
-  }, [metric, interval, authFetch])
+  }
 
-  const color = COLORS[metric] || '#4ade80'
+  useEffect(load, [days, authFetch, i18n.language])
+  useAutoRefresh(() => load(true), 60000)
 
   return (
     <div style={styles.page} className="fade-in">
-      <div style={styles.header}>
-        <h1 style={styles.h1}>Analytics</h1>
-        <div style={styles.controls}>
-          {/* Metric picker */}
-          <div style={styles.btnGroup}>
-            {METRICS.map(m => (
-              <button key={m} onClick={() => setMetric(m)}
-                style={{...styles.pill, ...(metric===m ? styles.pillActive : {})}}>
-                {m.replace(/_/g,' ')}
-              </button>
-            ))}
-          </div>
-          {/* Interval */}
-          <div style={styles.btnGroup}>
-            {INTERVALS.map(i => (
-              <button key={i} onClick={() => setInterval(i)}
-                style={{...styles.pill, ...(interval===i ? styles.pillActive : {})}}>
-                {i}
-              </button>
-            ))}
-          </div>
-          {/* Chart type */}
-          <div style={styles.btnGroup}>
-            {['line','bar'].map(t => (
-              <button key={t} onClick={() => setChartType(t)}
-                style={{...styles.pill, ...(chartType===t ? styles.pillActive : {})}}>
-                {t}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title={t('trends.title')}
+        subtitle={t('trends.subtitle')}
+        actions={<>
+          <SegmentedControl options={RANGES} value={days} onChange={setDays} />
+          <SegmentedControl options={CHART_TYPES} value={chartType} onChange={setChartType} />
+        </>}
+      />
 
-      <div style={styles.card}>
+      <div className="card" style={styles.cardPad}>
         <div style={styles.cardHeader}>
-          <span style={{fontSize:14, fontWeight:600, textTransform:'capitalize'}}>
-            {metric.replace(/_/g,' ')} — by {interval}
-          </span>
-          {loading && <span style={{fontSize:12, color:'var(--muted)'}}>Loading…</span>}
+          <span style={styles.cardHeaderTitle}>{t('trends.chartTitle')}</span>
         </div>
+        {loading ? <SkeletonBlock height={320} /> : rows.length === 0 ? (
+          <EmptyState icon={BarChart2}>{t('trends.dailyBreakdown')}</EmptyState>
+        ) : (
         <ResponsiveContainer width="100%" height={320}>
           {chartType === 'line' ? (
-            <LineChart data={data} margin={{ top:10, right:10, left:-20, bottom:0 }}>
-              <CartesianGrid stroke="#1e2430" strokeDasharray="3 3" />
-              <XAxis dataKey="date" tick={{ fill:'#6b7280', fontSize:11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill:'#6b7280', fontSize:11 }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ background:'#13161b', border:'1px solid #252a35', borderRadius:8, fontSize:13 }}
-                labelStyle={{ color:'#e8eaf0' }} />
-              <Line type="monotone" dataKey="value" stroke={color} strokeWidth={2.5} dot={false} name="Average" />
+            <LineChart data={rows} margin={{ top:10, right:10, left:-20, bottom:0 }}>
+              <CartesianGrid stroke="var(--chart-line)" strokeDasharray="3 3" />
+              <XAxis dataKey="date" tick={{ fill:'var(--chart-label)', fontSize:11 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill:'var(--chart-label)', fontSize:11 }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={{ background:'var(--tooltip-bg)', border:'1px solid var(--tooltip-border)', borderRadius:8, fontSize:13 }}
+                labelStyle={{ color:'var(--tooltip-text)' }} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Line type="monotone" dataKey="present"    stroke={SERIES.present.color}    strokeWidth={2.5} dot={false} name={SERIES.present.label} />
+              <Line type="monotone" dataKey="incomplete" stroke={SERIES.incomplete.color} strokeWidth={2}   dot={false} name={SERIES.incomplete.label} />
+              <Line type="monotone" dataKey="absent"     stroke={SERIES.absent.color}     strokeWidth={2}   dot={false} name={SERIES.absent.label} />
             </LineChart>
           ) : (
-            <BarChart data={data} margin={{ top:10, right:10, left:-20, bottom:0 }}>
-              <CartesianGrid stroke="#1e2430" strokeDasharray="3 3" />
-              <XAxis dataKey="date" tick={{ fill:'#6b7280', fontSize:11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill:'#6b7280', fontSize:11 }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ background:'#13161b', border:'1px solid #252a35', borderRadius:8, fontSize:13 }}
-                labelStyle={{ color:'#e8eaf0' }} />
-              <Bar dataKey="value" fill={color} radius={[4,4,0,0]} name="Average" />
+            <BarChart data={rows} margin={{ top:10, right:10, left:-20, bottom:0 }}>
+              <CartesianGrid stroke="var(--chart-line)" strokeDasharray="3 3" />
+              <XAxis dataKey="date" tick={{ fill:'var(--chart-label)', fontSize:11 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill:'var(--chart-label)', fontSize:11 }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={{ background:'var(--tooltip-bg)', border:'1px solid var(--tooltip-border)', borderRadius:8, fontSize:13 }}
+                labelStyle={{ color:'var(--tooltip-text)' }} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Bar dataKey="present"    stackId="a" fill={SERIES.present.color}    name={SERIES.present.label} />
+              <Bar dataKey="incomplete" stackId="a" fill={SERIES.incomplete.color} name={SERIES.incomplete.label} radius={[0,0,0,0]} />
+              <Bar dataKey="absent"     stackId="a" fill={SERIES.absent.color}     name={SERIES.absent.label} radius={[4,4,0,0]} />
             </BarChart>
           )}
         </ResponsiveContainer>
+        )}
       </div>
 
       {/* Data table */}
-      <div style={styles.card}>
-        <div style={styles.cardHeader}><span style={{fontSize:14, fontWeight:600}}>Raw Data</span></div>
+      <div className="card" style={styles.cardPad}>
+        <div style={styles.cardHeader}><span style={styles.cardHeaderTitle}>{t('trends.dailyBreakdown')}</span></div>
         <div style={{overflowX:'auto'}}>
-          <table style={styles.table}>
+          <table className="table">
             <thead><tr>
-              {['Period','Average','Total'].map(h => <th key={h} style={styles.th}>{h}</th>)}
+              <th>{t('trends.colDate')}</th>
+              <th className="num">{t('trends.colScheduled')}</th>
+              <th className="num">{t('common.status.present')}</th>
+              <th className="num">{t('common.status.incomplete')}</th>
+              <th className="num">{t('common.status.absent')}</th>
+              <th className="num">{t('trends.rate')}</th>
             </tr></thead>
             <tbody>
-              {data.map((row, i) => (
+              {rows.map((row, i) => (
                 <tr key={i}>
-                  <td style={styles.td}>{row.date}</td>
-                  <td style={{...styles.td, fontFamily:'var(--mono)', color}}>{row.value.toLocaleString()}</td>
-                  <td style={{...styles.td, fontFamily:'var(--mono)', color:'var(--muted)'}}>{row.total.toLocaleString()}</td>
+                  <td>{row.date}</td>
+                  <td className="num" style={{color:'var(--muted)'}}>{row.scheduled}</td>
+                  <td className="num" style={{color:SERIES.present.color}}>{row.present}</td>
+                  <td className="num" style={{color:SERIES.incomplete.color}}>{row.incomplete}</td>
+                  <td className="num" style={{color:SERIES.absent.color}}>{row.absent}</td>
+                  <td className="num" style={{color:SERIES.rate.color}}>{row.rate}%</td>
                 </tr>
               ))}
             </tbody>
@@ -131,15 +143,7 @@ export default function Analytics() {
 
 const styles = {
   page: { display:'flex', flexDirection:'column', gap:24 },
-  header: { display:'flex', flexDirection:'column', gap:16 },
-  h1: { fontSize:24, fontWeight:600, letterSpacing:'-0.5px' },
-  controls: { display:'flex', flexWrap:'wrap', gap:10 },
-  btnGroup: { display:'flex', background:'var(--bg2)', border:'1px solid var(--border)', borderRadius:8, padding:3, gap:2 },
-  pill: { padding:'5px 12px', borderRadius:6, border:'none', background:'transparent', color:'var(--muted)', fontSize:12, fontWeight:500, transition:'all 0.15s' },
-  pillActive: { background:'var(--bg3)', color:'var(--text)' },
-  card: { background:'var(--bg2)', border:'1px solid var(--border)', borderRadius:'var(--radius)', padding:'20px 24px' },
+  cardPad: { padding:'20px 24px' },
   cardHeader: { display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 },
-  table: { width:'100%', borderCollapse:'collapse' },
-  th: { textAlign:'left', fontSize:11, color:'var(--muted)', padding:'8px 12px', textTransform:'uppercase', letterSpacing:'0.5px', borderBottom:'1px solid var(--border)' },
-  td: { padding:'10px 12px', fontSize:13, borderBottom:'1px solid rgba(255,255,255,0.03)' },
+  cardHeaderTitle: { fontSize:14, fontWeight:600 },
 }

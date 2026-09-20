@@ -1,0 +1,16 @@
+[Unit]
+Description=Attendance backend (Node/Express API)
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=attendance
+WorkingDirectory=/opt/attendance-check-point
+EnvironmentFile=/opt/attendance-check-point/.env
+ExecStart=/usr/bin/node backend/src/server.js
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

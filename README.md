@@ -1,160 +1,148 @@
-# Analytics Dashboard — Backend
+# Attendance & Payroll System
 
-Internal analytics & reporting dashboard with Node.js/Express + PostgreSQL.
+Internal employee attendance, biometric device sync, and payroll dashboard.
+Node.js/Express + PostgreSQL backend, React (Vite) frontend, with direct integration to
+ZKTeco biometric fingerprint/face scanners over the local network.
+
+For running this as a real, always-on internal app (not just local dev), see **[DEPLOY.md](./DEPLOY.md)**.
 
 ---
 
 ## Stack
 
-| Layer    | Tech                              |
-|----------|-----------------------------------|
-| Runtime  | Node.js 18+                       |
-| Framework| Express 4                         |
-| Database | PostgreSQL 14+                    |
-| Auth     | JWT (access + refresh token rotation) |
-| Security | Helmet, bcrypt, express-validator |
+| Layer     | Tech                                       |
+|-----------|---------------------------------------------|
+| Runtime   | Node.js 18+                                  |
+| Framework | Express 4                                    |
+| Database  | PostgreSQL 14+                               |
+| Auth      | JWT (access + refresh token rotation)        |
+| Devices   | ZKTeco biometric scanners via `zklib-js` (TCP, port 4370) |
+| Frontend  | React 18 + Vite + Recharts                   |
+| Security  | Helmet, bcrypt, express-validator, rate limiting |
 
 ---
 
-## Project Structure
+## Project structure
 
 ```
-dashboard/
 ├── backend/
 │   └── src/
-│       ├── config/
-│       │   ├── database.js     # pg Pool connection
-│       │   ├── migrate.js      # schema migrations
-│       │   └── seed.js         # dev seed data
-│       ├── controllers/
-│       │   ├── authController.js
-│       │   ├── usersController.js
-│       │   ├── analyticsController.js
-│       │   └── reportsController.js
-│       ├── middleware/
-│       │   ├── auth.js         # authenticate + authorize
-│       │   ├── audit.js        # audit log writer
-│       │   └── errorHandler.js # validation + global errors
+│       ├── config/         # DB pool, migrations, seed data, admin bootstrap
+│       ├── controllers/    # auth, users, employees, devices, attendance, reports, analytics
+│       ├── middleware/     # auth, audit log, error handling
 │       ├── routes/
-│       │   ├── auth.js
-│       │   ├── users.js
-│       │   ├── analytics.js
-│       │   └── reports.js
-│       ├── utils/
-│       │   ├── jwt.js          # sign/verify helpers
-│       │   └── response.js     # consistent API responses
-│       ├── app.js              # Express app setup
-│       └── server.js           # entry point
-├── frontend/                   # (add your frontend here)
-├── .env.example
-└── package.json
+│       ├── services/       # device discovery + ZKTeco protocol adapter
+│       ├── app.js
+│       └── server.js
+├── frontend/                # React app (Dashboard, Employees, Devices, Attendance, Salary, Reports, Users)
+├── deploy/                  # setup-windows.ps1, setup-vm.sh (Linux), systemd unit, nginx config, backups
+├── DEPLOY.md                 # runbook for running this on a real always-on server
+└── .env.example
 ```
 
 ---
 
-## Quick Start
+## Quick start (local development)
 
-### 1. Install dependencies
 ```bash
 npm install
+cd frontend && npm install && cd ..
+cp .env.example .env   # edit DB credentials / JWT secrets
 ```
 
-### 2. Configure environment
+Create the database, then:
+
 ```bash
-cp .env.example .env
-# Edit .env with your DB credentials and JWT secrets
+npm run db:migrate          # create schema
+npm run db:create-admin -- admin@yourcompany.com 'StrongPassword!'   # first login
+npm run dev:all              # backend (nodemon) + frontend (vite) together
 ```
 
-### 3. Create the database
-```sql
-CREATE DATABASE analytics_dashboard;
-```
+Backend runs on `http://localhost:4000`, frontend dev server on `http://localhost:3001`
+(proxies `/api` to the backend — see `frontend/vite.config.js`).
 
-### 4. Run migrations
-```bash
-npm run db:migrate
-```
-
-### 5. Seed dev data
-```bash
-npm run db:seed
-```
-
-### 6. Start the server
-```bash
-npm run dev       # development (nodemon)
-npm start         # production
-```
+`npm run db:seed` also exists but seeds throwaway demo accounts/data left over from an
+earlier prototype — use `db:create-admin` for a real account instead.
 
 ---
 
-## Database Schema
+## Devices
 
-### Tables
-| Table           | Purpose                          |
-|-----------------|----------------------------------|
-| `roles`         | admin / analyst / viewer         |
-| `users`         | accounts with hashed passwords   |
-| `refresh_tokens`| JWT refresh token store (rotated)|
-| `audit_logs`    | immutable action log             |
-| `reports`       | saved report definitions         |
-| `dashboards`    | dashboard layouts                |
-| `widgets`       | dashboard widget configs         |
-| `metrics`       | time-series numeric data         |
+Biometric scanners are discovered by scanning the local subnet for open TCP port 4370
+(`GET /api/devices/discover`), then registered and polled via `zklib-js`
+(`backend/src/services/attendanceDeviceAdapter.js`). This only works when the machine
+running the backend is on the same physical/LAN network as the scanners — see
+[DEPLOY.md](./DEPLOY.md) for the networking requirement when deploying to a VM.
 
 ---
 
-## API Reference
+## API reference
 
 ### Auth
-| Method | Path               | Access  | Description              |
-|--------|--------------------|---------|--------------------------|
-| POST   | /api/auth/login    | Public  | Email + password login   |
-| POST   | /api/auth/refresh  | Public  | Rotate refresh token     |
-| POST   | /api/auth/logout   | Public  | Revoke refresh token     |
-| GET    | /api/auth/me       | Any     | Current user info        |
+| Method | Path                | Access | Description                     |
+|--------|---------------------|--------|----------------------------------|
+| POST   | /api/auth/login     | Public | Email + password login (rate-limited) |
+| POST   | /api/auth/refresh   | Public | Rotate refresh token             |
+| POST   | /api/auth/logout    | Public | Revoke refresh token             |
+| GET    | /api/auth/me        | Any    | Current user info                |
 
 ### Users
-| Method | Path            | Access         | Description    |
-|--------|-----------------|----------------|----------------|
-| GET    | /api/users      | admin, analyst | List users     |
-| GET    | /api/users/:id  | admin, analyst | Get user       |
-| POST   | /api/users      | admin          | Create user    |
-| PATCH  | /api/users/:id  | admin          | Update user    |
-| DELETE | /api/users/:id  | admin          | Delete user    |
+| Method | Path            | Access | Description  |
+|--------|-----------------|--------|--------------|
+| GET    | /api/users      | admin, analyst | List users |
+| GET    | /api/users/:id  | admin, analyst | Get user   |
+| POST   | /api/users      | admin  | Create user  |
+| PATCH  | /api/users/:id  | admin  | Update user  |
+| DELETE | /api/users/:id  | admin  | Delete user  |
 
-### Analytics
-| Method | Path                    | Access             | Description           |
+### Employees
+| Method | Path                | Description       |
+|--------|---------------------|--------------------|
+| GET    | /api/employees      | List employees     |
+| POST   | /api/employees      | Create employee    |
+| PATCH  | /api/employees/:id  | Update employee    |
+| DELETE | /api/employees/:id  | Delete employee    |
+
+### Devices
+| Method | Path                          | Description                       |
+|--------|-------------------------------|-------------------------------------|
+| GET    | /api/devices                  | List registered devices             |
+| GET    | /api/devices/discover          | Scan LAN for scanners on port 4370  |
+| POST   | /api/devices                  | Register a device                   |
+| PATCH  | /api/devices/:id               | Update a device                     |
+| DELETE | /api/devices/:id               | Remove a device                     |
+| POST   | /api/devices/:id/connect       | Test connection to a device         |
+| POST   | /api/devices/:id/sync-users    | Pull enrolled users from a device   |
+| POST   | /api/devices/:id/sync-logs     | Pull attendance logs from a device  |
+
+### Attendance
+| Method | Path                                     | Description                  |
+|--------|-------------------------------------------|-------------------------------|
+| GET    | /api/attendance/logs                       | List raw attendance logs      |
+| POST   | /api/attendance/logs                       | Record an attendance event    |
+| GET    | /api/attendance/daily                      | Daily attendance summary      |
+| GET    | /api/attendance/salary                     | Salary summary                |
+| GET    | /api/attendance/reports/monthly            | Monthly attendance report     |
+| GET    | /api/attendance/reports/employees/:employeeId | Per-employee report        |
+
+### Reports & Analytics
+| Method | Path                    | Access             | Description         |
 |--------|-------------------------|--------------------|----------------------|
-| GET    | /api/analytics/summary  | all roles          | Dashboard summary     |
-| GET    | /api/analytics/metrics  | all roles          | Time-series metrics   |
-| POST   | /api/analytics/metrics  | admin, analyst     | Ingest metric event   |
-
-### Reports
-| Method | Path              | Access         | Description    |
-|--------|-------------------|----------------|----------------|
-| GET    | /api/reports      | all roles      | List reports   |
-| GET    | /api/reports/:id  | all roles      | Get report     |
-| POST   | /api/reports      | admin, analyst | Create report  |
-| PATCH  | /api/reports/:id  | admin, analyst | Update report  |
-| DELETE | /api/reports/:id  | admin, analyst | Delete report  |
+| GET    | /api/analytics/summary  | all roles          | Dashboard summary    |
+| GET    | /api/analytics/metrics  | all roles          | Time-series metrics  |
+| POST   | /api/analytics/metrics  | admin, analyst     | Ingest metric event  |
+| GET    | /api/reports            | all roles          | List saved reports   |
+| GET    | /api/reports/:id        | all roles          | Get report           |
+| POST   | /api/reports            | admin, analyst     | Create report        |
+| PATCH  | /api/reports/:id        | admin, analyst     | Update report        |
+| DELETE | /api/reports/:id        | admin, analyst     | Delete report        |
 
 ---
 
 ## Roles
 
 | Role    | Capabilities                            |
-|---------|-----------------------------------------|
-| admin   | Full access + user management           |
-| analyst | Read/write reports + analytics + ingest |
-| viewer  | Read-only access to reports + analytics |
-
----
-
-## Seed Credentials (dev only)
-
-| Email                       | Password      | Role    |
-|-----------------------------|---------------|---------|
-| admin@dashboard.local       | Admin1234!    | admin   |
-| analyst@dashboard.local     | Analyst1234!  | analyst |
-| viewer@dashboard.local      | Viewer1234!   | viewer  |
+|---------|-------------------------------------------|
+| admin   | Full access + user management              |
+| analyst | Read/write reports + analytics + ingest    |
+| viewer  | Read-only access to reports + analytics    |

@@ -1,10 +1,15 @@
 require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
 const app = require('./app');
 const { pool } = require('./config/database');
+const { startDevicePolling } = require('./services/devicePoller');
 
 const PORT = process.env.PORT || 4000;
 
 const start = async () => {
+  fs.mkdirSync(path.join(__dirname, '..', 'uploads'), { recursive: true });
+
   // Verify DB connection
   try {
     await pool.query('SELECT 1');
@@ -20,6 +25,8 @@ const start = async () => {
     console.log(`   Environment : ${process.env.NODE_ENV || 'development'}`);
     console.log(`   Health check: http://localhost:${PORT}/health\n`);
   });
+
+  startDevicePolling();
 };
 
 start();

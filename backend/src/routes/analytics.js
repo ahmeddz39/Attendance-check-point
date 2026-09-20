@@ -3,18 +3,19 @@ const { body, query } = require('express-validator');
 const { getMetrics, getSummary, ingestMetric } = require('../controllers/analyticsController');
 const { authenticate, authorize } = require('../middleware/auth');
 const { validateRequest } = require('../middleware/errorHandler');
+const { asyncHandler } = require('../middleware/asyncHandler');
 
 const router = Router();
 router.use(authenticate);
 
 router.get('/metrics',
   authorize('admin', 'analyst', 'viewer'),
-  getMetrics
+  asyncHandler(getMetrics)
 );
 
 router.get('/summary',
   authorize('admin', 'analyst', 'viewer'),
-  getSummary
+  asyncHandler(getSummary)
 );
 
 router.post('/metrics',
@@ -22,7 +23,7 @@ router.post('/metrics',
   body('name').notEmpty().isString(),
   body('value').isNumeric(),
   validateRequest,
-  ingestMetric
+  asyncHandler(ingestMetric)
 );
 
 module.exports = router;

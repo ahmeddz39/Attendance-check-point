@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 
 const AuthContext = createContext(null)
 
@@ -8,29 +8,28 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (token) {
-      fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
-        .then(r => {
-          if (!r.ok) throw new Error(`HTTP ${r.status}`)
-          return r.json()
-        })
-        .then(d => setUser(d.data))
-        .catch((err) => { 
-          console.debug('Auth validation failed:', err.message)
-          localStorage.removeItem('token')
-          setToken(null) 
-        })
-        .finally(() => setLoading(false))
-    } else {
-      setLoading(false)
-    }
+    if (!token) { setLoading(false); return }
+    fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json()
+      })
+      .then(d => setUser(d.data))
+      .catch((err) => {
+        console.debug('Auth validation failed:', err.message)
+        localStorage.removeItem('token')
+        localStorage.removeItem('refreshToken')
+        setUser(null)
+        setToken(null)
+      })
+      .finally(() => setLoading(false))
   }, [token])
 
   const login = async (email, password) => {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify({ email, password }),
     })
     const data = await res.json()
     if (!res.ok) throw new Error(data.error?.message || 'Login failed')
@@ -41,27 +40,27 @@ export const AuthProvider = ({ children }) => {
     return data.data.user
   }
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     const rt = localStorage.getItem('refreshToken')
     await fetch('/api/auth/logout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken: rt })
+      body: JSON.stringify({ refreshToken: rt }),
     }).catch(() => {})
     localStorage.removeItem('token')
     localStorage.removeItem('refreshToken')
-    setToken(null)
     setUser(null)
-  }
+    setToken(null)
+  }, [])
 
-  const authFetch = async (url, opts = {}) => {
+  const authFetch = useCallback(async (url, opts = {}) => {
     const res = await fetch(url, {
       ...opts,
-      headers: { ...opts.headers, Authorization: `Bearer ${token}` }
+      headers: { ...opts.headers, Authorization: `Bearer ${token}` },
     })
     if (res.status === 401) { logout(); return null }
     return res
-  }
+  }, [token, logout])
 
   return (
     <AuthContext.Provider value={{ user, token, loading, login, logout, authFetch }}>

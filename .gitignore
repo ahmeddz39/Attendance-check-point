@@ -1,0 +1,10 @@
+node_modules/
+frontend/node_modules/
+frontend/dist/
+dist/
+*.log
+.env
+.env.production
+.env.local
+backend/uploads/*
+!backend/uploads/.gitkeep
