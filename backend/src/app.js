@@ -4,8 +4,10 @@ const express = require('express');
 const cors    = require('cors');
 const helmet  = require('helmet');
 const morgan  = require('morgan');
+const rateLimit = require('express-rate-limit');
 
 const authRoutes      = require('./routes/auth');
+const licenseRoutes   = require('./routes/license');
 const usersRoutes     = require('./routes/users');
 const analyticsRoutes = require('./routes/analytics');
 const reportsRoutes   = require('./routes/reports');
@@ -15,6 +17,8 @@ const attendanceRoutes = require('./routes/attendance');
 const settingsRoutes   = require('./routes/settings');
 const holidaysRoutes   = require('./routes/holidays');
 const { errorHandler } = require('./middleware/errorHandler');
+const { requireLicense } = require('./middleware/license');
+const { authenticate } = require('./middleware/auth');
 
 const app = express();
 
@@ -40,6 +44,15 @@ app.use(cors({
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// General defense-in-depth rate limit on top of the stricter per-route ones
+// (e.g. the login limiter in routes/auth.js).
+app.use('/api', rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+}));
+
 // ── Logging ─────────────────────────────────────────────────────────────────
 if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('dev'));
@@ -51,15 +64,22 @@ app.get('/health', (req, res) =>
 );
 
 // ── API Routes ───────────────────────────────────────────────────────────────
+// /api/auth and /api/license stay outside the license gate: an admin must be
+// able to log in and activate a fresh, unlicensed install. `authenticate`
+// runs before `requireLicense` on every other route so an unauthenticated
+// caller gets a plain 401 instead of learning this install's license state
+// (the routers below also call `authenticate` internally -- redundant but
+// harmless, and far simpler than threading the gate through each router).
 app.use('/api/auth',      authRoutes);
-app.use('/api/users',     usersRoutes);
-app.use('/api/analytics', analyticsRoutes);
-app.use('/api/reports',   reportsRoutes);
-app.use('/api/devices',   devicesRoutes);
-app.use('/api/employees', employeesRoutes);
-app.use('/api/attendance', attendanceRoutes);
-app.use('/api/settings',  settingsRoutes);
-app.use('/api/holidays',  holidaysRoutes);
+app.use('/api/license',   licenseRoutes);
+app.use('/api/users',     authenticate, requireLicense, usersRoutes);
+app.use('/api/analytics', authenticate, requireLicense, analyticsRoutes);
+app.use('/api/reports',   authenticate, requireLicense, reportsRoutes);
+app.use('/api/devices',   authenticate, requireLicense, devicesRoutes);
+app.use('/api/employees', authenticate, requireLicense, employeesRoutes);
+app.use('/api/attendance', authenticate, requireLicense, attendanceRoutes);
+app.use('/api/settings',  authenticate, requireLicense, settingsRoutes);
+app.use('/api/holidays',  authenticate, requireLicense, holidaysRoutes);
 
 // ── Uploaded assets (company logo, etc.) ──────────────────────────────────────
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));

@@ -397,5 +397,21 @@
     "password": "Mot de passe",
     "signIn": "Se connecter →",
     "signingIn": "Connexion en cours…"
+  },
+  "license": {
+    "title": "Activer cette installation",
+    "notActivatedIntro": "Cette installation n'est pas encore activée. Envoyez l'identifiant machine ci-dessous à votre fournisseur pour obtenir une licence, puis collez-la ci-dessous.",
+    "machineId": "Identifiant machine",
+    "copy": "Copier",
+    "copied": "Copié",
+    "shareWhatsApp": "Envoyer via WhatsApp",
+    "pasteLabel": "Collez la licence reçue",
+    "pastePlaceholder": "Collez le code de licence ici…",
+    "activate": "Activer",
+    "activating": "Activation…",
+    "activatedFor": "Activé pour {{licensee}}",
+    "nonAdminMessage": "Demandez à votre administrateur d'activer cette installation.",
+    "invalidLicense": "Cette licence n'a pas pu être vérifiée. Vérifiez qu'elle correspond bien à cette machine.",
+    "genericError": "Une erreur est survenue. Réessayez."
   }
 }

@@ -8,3 +8,9 @@ dist/
 .env.local
 backend/uploads/*
 !backend/uploads/.gitkeep
+
+# Marketing site: deployed separately via Cloudflare, never part of this repo.
+website/
+
+# Vendor license-signing private key: never committed, never handed to a client.
+licensing/private-key.pem

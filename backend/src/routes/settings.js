@@ -10,10 +10,15 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => cb(null, `logo-${Date.now()}${path.extname(file.originalname)}`),
 });
 
+// Explicit raster-image allowlist -- notably excludes image/svg+xml, which
+// can carry inline <script> and is served back byte-for-byte from
+// /uploads (a stored-XSS path if an admin account is ever compromised).
+const ALLOWED_LOGO_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
+
 const upload = multer({
   storage,
   limits: { fileSize: 2 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => cb(null, file.mimetype.startsWith('image/')),
+  fileFilter: (req, file, cb) => cb(null, ALLOWED_LOGO_TYPES.has(file.mimetype)),
 });
 
 const router = Router();

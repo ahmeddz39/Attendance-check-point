@@ -86,6 +86,9 @@ step "Installing dependencies and building frontend"
 npm ci
 (cd frontend && npm ci && npm run build)
 
+step "Checking for known-vulnerable dependencies (informational, non-blocking)"
+npm audit --omit=dev || true
+
 step "Running database migrations"
 npm run db:migrate
 
@@ -140,6 +143,11 @@ if [ "$FIRST_RUN" = "1" ]; then
   echo " Database password (save this, it's only shown once):"
   echo "   $DB_PASSWORD"
 fi
+echo ""
+echo " This installation is not licensed yet. Send this machine ID to"
+echo " activate it, then paste the license you get back into the app's"
+echo " Activate License screen (log in as admin first):"
+echo "   $(node -e "console.log(require('./backend/src/utils/machineId').getMachineId())")"
 echo ""
 echo " Day to day:"
 echo "   systemctl status attendance-backend nginx"

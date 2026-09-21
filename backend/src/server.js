@@ -4,6 +4,7 @@ const path = require('path');
 const app = require('./app');
 const { pool } = require('./config/database');
 const { startDevicePolling } = require('./services/devicePoller');
+const { startTokenCleanup } = require('./services/tokenCleanup');
 
 const PORT = process.env.PORT || 4000;
 
@@ -27,6 +28,7 @@ const start = async () => {
   });
 
   startDevicePolling();
+  startTokenCleanup();
 };
 
 start();

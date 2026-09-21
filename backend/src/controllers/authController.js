@@ -2,7 +2,10 @@ const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const { query } = require('../config/database');
 const { signAccessToken, signRefreshToken, verifyRefreshToken } = require('../utils/jwt');
-const { success, created, unauthorized, badRequest, serverError } = require('../utils/response');
+const { success, created, unauthorized, badRequest, serverError, error } = require('../utils/response');
+
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_MINUTES = 15;
 
 // POST /api/auth/login
 const login = async (req, res) => {
@@ -18,8 +21,26 @@ const login = async (req, res) => {
     const user = rows[0];
     if (!user) return unauthorized(res, 'Invalid email or password');
 
+    if (user.locked_until && new Date(user.locked_until) > new Date()) {
+      const minutesLeft = Math.ceil((new Date(user.locked_until) - new Date()) / 60000);
+      return error(res, `Account locked due to repeated failed logins. Try again in ${minutesLeft} minute(s).`, 423);
+    }
+
     const valid = await bcrypt.compare(password, user.password_hash);
-    if (!valid) return unauthorized(res, 'Invalid email or password');
+    if (!valid) {
+      const attempts = user.failed_login_attempts + 1;
+      const lockedUntil = attempts >= MAX_FAILED_ATTEMPTS
+        ? new Date(Date.now() + LOCKOUT_MINUTES * 60000)
+        : null;
+      await query(
+        `UPDATE users SET failed_login_attempts = $1, locked_until = $2 WHERE id = $3`,
+        [attempts, lockedUntil, user.id]
+      );
+      if (lockedUntil) {
+        return error(res, `Account locked due to repeated failed logins. Try again in ${LOCKOUT_MINUTES} minute(s).`, 423);
+      }
+      return unauthorized(res, 'Invalid email or password');
+    }
 
     // Tokens
     const payload = { sub: user.id, role: user.role };
@@ -35,8 +56,11 @@ const login = async (req, res) => {
       [uuidv4(), user.id, refreshToken, expiresAt]
     );
 
-    // Update last_login
-    await query(`UPDATE users SET last_login_at = NOW() WHERE id = $1`, [user.id]);
+    // Update last_login, clear any lockout state
+    await query(
+      `UPDATE users SET last_login_at = NOW(), failed_login_attempts = 0, locked_until = NULL WHERE id = $1`,
+      [user.id]
+    );
 
     return success(res, {
       accessToken,

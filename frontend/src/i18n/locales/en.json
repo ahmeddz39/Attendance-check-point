@@ -397,5 +397,21 @@
     "password": "Password",
     "signIn": "Sign in →",
     "signingIn": "Signing in…"
+  },
+  "license": {
+    "title": "Activate this installation",
+    "notActivatedIntro": "This installation isn't licensed yet. Send the machine ID below to your vendor to get a license, then paste it in below.",
+    "machineId": "Machine ID",
+    "copy": "Copy",
+    "copied": "Copied",
+    "shareWhatsApp": "Send via WhatsApp",
+    "pasteLabel": "Paste the license you received",
+    "pastePlaceholder": "Paste the license blob here…",
+    "activate": "Activate",
+    "activating": "Activating…",
+    "activatedFor": "Activated for {{licensee}}",
+    "nonAdminMessage": "Ask your administrator to activate this installation.",
+    "invalidLicense": "This license could not be verified. Double-check it matches this machine.",
+    "genericError": "Something went wrong. Try again."
   }
 }

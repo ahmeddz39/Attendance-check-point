@@ -195,6 +195,9 @@ Write-Step "Building frontend"
 npm run build
 Pop-Location
 
+Write-Step "Checking for known-vulnerable dependencies (informational, non-blocking)"
+try { npm audit --omit=dev } catch {}
+
 # ── 6. Migrations ─────────────────────────────────────────────────────────────
 Write-Step "Running database migrations"
 npm run db:migrate
@@ -258,6 +261,12 @@ if ($firstRun) {
   Write-Host "   $DbPassword"
   Write-Host ""
 }
+$machineId = node -e "console.log(require('./backend/src/utils/machineId').getMachineId())"
+Write-Host " This installation is not licensed yet. Send this machine ID to"
+Write-Host " activate it, then paste the license you get back into the app's"
+Write-Host " Activate License screen (log in as admin first):"
+Write-Host "   $machineId"
+Write-Host ""
 Write-Host " Day to day:"
 Write-Host "   pm2 status / pm2 logs attendance-app / pm2 restart attendance-app"
 Write-Host " After pulling code changes:"

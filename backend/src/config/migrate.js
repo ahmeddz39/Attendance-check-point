@@ -317,6 +317,25 @@ const migrate = async () => {
       CREATE INDEX IF NOT EXISTS idx_holidays_date ON holidays(date);
     `);
 
+    // ── Account lockout (brute-force protection alongside IP rate limiting) ──
+    await client.query(`
+      ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS failed_login_attempts INTEGER NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS locked_until TIMESTAMPTZ;
+    `);
+
+    // ── License (offline, hardware-locked, singleton row) ─────────────────────
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS license (
+        id           TEXT PRIMARY KEY DEFAULT 'current' CHECK (id = 'current'),
+        license_blob TEXT NOT NULL,
+        licensee     TEXT NOT NULL,
+        machine_id   TEXT NOT NULL,
+        activated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        activated_by UUID REFERENCES users(id)
+      );
+    `);
+
     // ── updated_at trigger function ───────────────────────────────────────────
     await client.query(`
       CREATE OR REPLACE FUNCTION update_updated_at()

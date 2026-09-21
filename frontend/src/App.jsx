@@ -1,7 +1,9 @@
+import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { CompanyProvider } from './context/CompanyContext'
 import Login     from './pages/Login'
+import ActivateLicense from './pages/ActivateLicense'
 import Dashboard from './pages/Dashboard'
 import Analytics from './pages/Analytics'
 import Reports   from './pages/Reports'
@@ -25,12 +27,32 @@ const Private = ({ children, roles }) => {
   return children
 }
 
+// Blocks the app shell behind an active license -- an admin can still log in
+// (that route lives outside this gate) to reach the activation screen.
+const LicenseGate = ({ children }) => {
+  const { authFetch } = useAuth()
+  const [status, setStatus] = useState(null) // null = checking
+
+  const check = () => {
+    authFetch('/api/license/status')
+      .then(res => res?.ok && res.json())
+      .then(data => setStatus(data?.data?.activated ?? false))
+      .catch(() => setStatus(false))
+  }
+
+  useEffect(check, [authFetch])
+
+  if (status === null) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',color:'var(--muted)'}}>Loading…</div>
+  if (!status) return <ActivateLicense onActivated={check} />
+  return children
+}
+
 export default function App() {
   return (
     <AuthProvider>
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="/" element={<Private><CompanyProvider><Layout /></CompanyProvider></Private>}>
+        <Route path="/" element={<Private><LicenseGate><CompanyProvider><Layout /></CompanyProvider></LicenseGate></Private>}>
           <Route index         element={<Dashboard />} />
           <Route path="analytics" element={<Analytics />} />
           <Route path="reports"   element={<Reports />} />
