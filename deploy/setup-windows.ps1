@@ -5,16 +5,19 @@
 
 .DESCRIPTION
   Run this from an elevated ("Run as Administrator") PowerShell 7+ prompt,
-  from the repo root, right after cloning it:
+  from the repo root, right after getting the code onto this machine --
+  either `git clone` (your own dev/staging machine) or extracting a
+  `git archive` release zip (a client's machine -- see DEPLOY.md's
+  "Getting the code onto a machine" section for why a client's box
+  shouldn't be a clone of this private repo):
 
-    git clone <repo-url> C:\Apps\Attendance-check-point
     cd C:\Apps\Attendance-check-point
     .\deploy\setup-windows.ps1
 
-  Every step is idempotent -- safe to re-run after `git pull` to pick up
-  code changes (it will rebuild the frontend, re-run migrations, and
-  restart the PM2 process; it will NOT overwrite an existing .env or
-  recreate the database/admin account).
+  Every step is idempotent -- safe to re-run after pulling (or re-copying
+  a newer release zip onto) the code to pick up changes (it will rebuild
+  the frontend, re-run migrations, and restart the PM2 process; it will
+  NOT overwrite an existing .env or recreate the database/admin account).
 
   All parameters are optional. Anything not supplied is auto-generated
   (DB password, JWT secrets, admin password) so this can run fully
@@ -269,6 +272,6 @@ Write-Host "   $machineId"
 Write-Host ""
 Write-Host " Day to day:"
 Write-Host "   pm2 status / pm2 logs attendance-app / pm2 restart attendance-app"
-Write-Host " After pulling code changes:"
-Write-Host "   git pull; .\deploy\setup-windows.ps1"
+Write-Host " After a code update (git pull, or a new release zip extracted over this folder):"
+Write-Host "   .\deploy\setup-windows.ps1"
 Write-Host "================================================================`n" -ForegroundColor Green

@@ -4,14 +4,18 @@
 #
 #   sudo mkdir -p /opt/attendance-check-point
 #   sudo chown "$USER" /opt/attendance-check-point
-#   git clone <repo-url> /opt/attendance-check-point
+#   # Get the code into /opt/attendance-check-point: `git clone` on your own
+#   # dev/staging machine, or extract a `git archive` release zip on a
+#   # client's machine -- see DEPLOY.md's "Getting the code onto a machine"
+#   # section for why a client's box shouldn't be a clone of this private repo.
 #   cd /opt/attendance-check-point
 #   sudo bash deploy/setup-vm.sh
 #
-# Safe to re-run after `git pull`: it rebuilds the frontend, re-runs
-# migrations, and restarts the service. It will NOT overwrite an existing
-# .env, recreate the database/role, or reset the admin password on a re-run
-# unless you explicitly pass ADMIN_PASSWORD.
+# Safe to re-run after pulling (or re-copying a newer release zip onto) the
+# code: it rebuilds the frontend, re-runs migrations, and restarts the
+# service. It will NOT overwrite an existing .env, recreate the
+# database/role, or reset the admin password on a re-run unless you
+# explicitly pass ADMIN_PASSWORD.
 #
 # Everything is generated automatically if not supplied via env vars:
 #   DB_PASSWORD, ADMIN_EMAIL, ADMIN_PASSWORD
@@ -152,6 +156,6 @@ echo ""
 echo " Day to day:"
 echo "   systemctl status attendance-backend nginx"
 echo "   journalctl -u attendance-backend -f"
-echo " After pulling code changes:"
-echo "   git pull && sudo bash deploy/setup-vm.sh"
+echo " After a code update (git pull, or a new release zip extracted over this folder):"
+echo "   sudo bash deploy/setup-vm.sh"
 echo "================================================================"
