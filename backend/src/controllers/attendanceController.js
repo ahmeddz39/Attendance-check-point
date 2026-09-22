@@ -248,8 +248,8 @@ const listDailyAttendance = async (req, res) => {
         WHEN employee_id IS NULL THEN 'unmatched'
         WHEN punch_count = 0 AND EXISTS (
           SELECT 1 FROM leaves lv
-          WHERE lv.employee_id = employee_id AND lv.status = 'scheduled'
-            AND work_day::date BETWEEN lv.start_date AND lv.end_date
+          WHERE lv.employee_id = combined.employee_id AND lv.status = 'scheduled'
+            AND combined.work_day::date BETWEEN lv.start_date AND lv.end_date
         ) THEN 'on_leave'
         WHEN punch_count = 0 THEN 'absent'
         WHEN punch_count = 1 THEN 'incomplete'
