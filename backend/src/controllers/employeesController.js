@@ -7,7 +7,7 @@ const EMPLOYEE_FIELDS = `
   id, employee_code, primary_device_id, device_uid, device_user_id,
   device_role, card_number, first_name, last_name, email, phone,
   department, position, salary_type, hourly_rate, monthly_salary,
-  standard_hours, is_active, metadata, created_at, updated_at
+  standard_hours, is_active, metadata, leave_balance_adjustment, created_at, updated_at
 `;
 
 const listEmployees = async (req, res) => {
@@ -40,16 +40,17 @@ const createEmployee = async (req, res) => {
     deviceUid, deviceRole, cardNumber, primaryDeviceId,
     department, position, salaryType = 'hourly', hourlyRate = 0,
     monthlySalary = 0, standardHours = 160, isActive = true, metadata = {},
+    leaveBalanceAdjustment = 0,
   } = req.body;
 
   const { rows } = await query(`
     INSERT INTO employees
       (employee_code, primary_device_id, device_uid, device_user_id, device_role, card_number,
        first_name, last_name, email, phone, department, position, salary_type,
-       hourly_rate, monthly_salary, standard_hours, is_active, metadata)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+       hourly_rate, monthly_salary, standard_hours, is_active, metadata, leave_balance_adjustment)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
     RETURNING ${EMPLOYEE_FIELDS}
-  `, [employeeCode, primaryDeviceId, deviceUid, deviceUserId, deviceRole, cardNumber, firstName, lastName, email, phone, department, position, salaryType, hourlyRate, monthlySalary, standardHours, isActive, JSON.stringify(metadata)]);
+  `, [employeeCode, primaryDeviceId, deviceUid, deviceUserId, deviceRole, cardNumber, firstName, lastName, email, phone, department, position, salaryType, hourlyRate, monthlySalary, standardHours, isActive, JSON.stringify(metadata), leaveBalanceAdjustment]);
 
   return created(res, rows[0]);
 };
@@ -59,7 +60,7 @@ const updateEmployee = async (req, res) => {
     employeeCode, deviceUserId, firstName, lastName, email, phone,
     deviceUid, deviceRole, cardNumber, primaryDeviceId, metadata,
     department, position, salaryType, hourlyRate, monthlySalary,
-    standardHours, isActive,
+    standardHours, isActive, leaveBalanceAdjustment,
   } = req.body;
 
   const { rows } = await query(`
@@ -81,10 +82,11 @@ const updateEmployee = async (req, res) => {
       monthly_salary = COALESCE($15, monthly_salary),
       standard_hours = COALESCE($16, standard_hours),
       is_active = COALESCE($17, is_active),
-      metadata = COALESCE($18, metadata)
-    WHERE id = $19
+      metadata = COALESCE($18, metadata),
+      leave_balance_adjustment = COALESCE($19, leave_balance_adjustment)
+    WHERE id = $20
     RETURNING ${EMPLOYEE_FIELDS}
-  `, [employeeCode, primaryDeviceId, deviceUid, deviceUserId, deviceRole, cardNumber, firstName, lastName, email, phone, department, position, salaryType, hourlyRate, monthlySalary, standardHours, isActive, metadata ? JSON.stringify(metadata) : null, req.params.id]);
+  `, [employeeCode, primaryDeviceId, deviceUid, deviceUserId, deviceRole, cardNumber, firstName, lastName, email, phone, department, position, salaryType, hourlyRate, monthlySalary, standardHours, isActive, metadata ? JSON.stringify(metadata) : null, leaveBalanceAdjustment, req.params.id]);
 
   if (!rows.length) return notFound(res, 'Employee not found');
   return success(res, rows[0]);

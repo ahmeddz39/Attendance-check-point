@@ -4,6 +4,7 @@ const TONES = {
   danger: 'badge-danger',
   warn: 'badge-warn',
   muted: 'badge-muted',
+  info: 'badge-info',
 }
 
 export default function Badge({ tone = 'muted', children }) {

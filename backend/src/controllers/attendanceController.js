@@ -9,6 +9,7 @@ const ATTENDANCE_RULES = {
   lateRule: 'A present day is marked late when check-in is after the configured shift start plus grace period.',
   earlyRule: 'A present day is marked early leave when check-out is before the configured shift end minus grace period.',
   holidayRule: 'Scheduled workdays that fall on a registered public holiday are excluded from scheduled/absent counts.',
+  leaveRule: 'A scheduled paid leave day with no punches shows as on leave instead of absent, and is paid as if worked (hourly employees are credited their normal shift hours for that day).',
   overtimeRule: 'Hours worked beyond the daily overtime threshold are paid at the overtime multiplier. Employees with a custom shift use their own scheduled shift length as that threshold instead of the company-wide default.',
   shiftRule: 'Each employee can override the company default shift (start/end, or a per-weekday schedule) from their Edit Employee form; days they are marked not-working on are excluded from scheduled/absent counts for them specifically.',
   monthlySalaryRule: 'Monthly salary is prorated by present scheduled workdays in the selected period, plus overtime pay.',
@@ -245,6 +246,11 @@ const listDailyAttendance = async (req, res) => {
       position,
       CASE
         WHEN employee_id IS NULL THEN 'unmatched'
+        WHEN punch_count = 0 AND EXISTS (
+          SELECT 1 FROM leaves lv
+          WHERE lv.employee_id = employee_id AND lv.status = 'scheduled'
+            AND work_day::date BETWEEN lv.start_date AND lv.end_date
+        ) THEN 'on_leave'
         WHEN punch_count = 0 THEN 'absent'
         WHEN punch_count = 1 THEN 'incomplete'
         WHEN check_in_at::time > (eff_shift_start + (c.grace_minutes || ' minutes')::interval) THEN 'late'
@@ -357,6 +363,32 @@ const salarySummary = async (req, res) => {
         COUNT(*) FILTER (WHERE is_late) AS late_days
       FROM day_calc
       GROUP BY employee_id
+    ),
+    leave_days AS (
+      -- A scheduled leave only counts against attendance on days the employee was
+      -- actually going to work that day (own shift override, else company default,
+      -- minus holidays) and only when they didn't punch in anyway (real attendance
+      -- wins, same precedent as holidays). leave_hours is what an hourly employee's
+      -- normal shift on that day would have paid, credited below so paid leave
+      -- doesn't zero out their pay.
+      SELECT
+        lv.employee_id,
+        COUNT(*) AS leave_day_count,
+        SUM(GREATEST(EXTRACT(EPOCH FROM (COALESCE(es.shift_end, c.shift_end) - COALESCE(es.shift_start, c.shift_start))) / 3600, 0)) AS leave_hours
+      FROM leaves lv
+      CROSS JOIN company c
+      CROSS JOIN LATERAL generate_series(
+        GREATEST(lv.start_date::timestamptz, $1::timestamptz),
+        LEAST(lv.end_date::timestamptz, ($2::timestamptz - interval '1 second')),
+        interval '1 day'
+      ) AS gs(work_day)
+      LEFT JOIN employee_shifts es ON es.employee_id = lv.employee_id AND es.weekday = EXTRACT(ISODOW FROM gs.work_day)
+      LEFT JOIN daily_bounds db ON db.employee_id = lv.employee_id AND db.work_day = gs.work_day
+      WHERE lv.status = 'scheduled'
+        AND (CASE WHEN es.employee_id IS NOT NULL THEN es.is_working ELSE EXTRACT(ISODOW FROM gs.work_day) BETWEEN 1 AND 5 END)
+        AND NOT EXISTS (SELECT 1 FROM holidays h WHERE h.date = gs.work_day::date)
+        AND db.employee_id IS NULL
+      GROUP BY lv.employee_id
     )
     SELECT
       e.id,
@@ -373,7 +405,8 @@ const salarySummary = async (req, res) => {
       COALESCE(h.regular_hours, 0) AS regular_hours,
       COALESCE(h.overtime_hours, 0) AS overtime_hours,
       COALESCE(h.present_days, 0) AS present_days,
-      GREATEST(COALESCE(p.scheduled_days, 0) - COALESCE(h.present_days, 0), 0) AS absent_days,
+      COALESCE(ld.leave_day_count, 0) AS leave_days,
+      GREATEST(COALESCE(p.scheduled_days, 0) - COALESCE(h.present_days, 0) - COALESCE(ld.leave_day_count, 0), 0) AS absent_days,
       COALESCE(h.incomplete_days, 0) AS incomplete_days,
       COALESCE(h.late_days, 0) AS late_days,
       ROUND((
@@ -386,16 +419,17 @@ const salarySummary = async (req, res) => {
       CASE
         WHEN COALESCE(e.salary_type, 'hourly') = 'monthly'
           THEN ROUND((
-            COALESCE(e.monthly_salary, 0) * COALESCE(h.present_days, 0) / NULLIF(COALESCE(p.scheduled_days, 0), 0)
+            COALESCE(e.monthly_salary, 0) * (COALESCE(h.present_days, 0) + COALESCE(ld.leave_day_count, 0)) / NULLIF(COALESCE(p.scheduled_days, 0), 0)
             + (COALESCE(e.monthly_salary, 0) / NULLIF(COALESCE(NULLIF(e.standard_hours, 0), 160), 0)) * comp.overtime_multiplier * COALESCE(h.overtime_hours, 0)
           )::numeric, 2)
         ELSE ROUND((
-          COALESCE(e.hourly_rate, 0) * COALESCE(h.regular_hours, 0)
+          COALESCE(e.hourly_rate, 0) * (COALESCE(h.regular_hours, 0) + COALESCE(ld.leave_hours, 0))
           + COALESCE(e.hourly_rate, 0) * comp.overtime_multiplier * COALESCE(h.overtime_hours, 0)
         )::numeric, 2)
       END AS estimated_salary
     FROM employees e
     LEFT JOIN hours h ON h.employee_id = e.id
+    LEFT JOIN leave_days ld ON ld.employee_id = e.id
     CROSS JOIN period p
     CROSS JOIN company comp
     WHERE ${employeeConditions.join(' AND ')}
@@ -406,6 +440,7 @@ const salarySummary = async (req, res) => {
     employees: acc.employees + 1,
     scheduledDays: Math.max(acc.scheduledDays, Number(row.scheduled_days || 0)),
     presentDays: acc.presentDays + Number(row.present_days || 0),
+    leaveDays: acc.leaveDays + Number(row.leave_days || 0),
     absentDays: acc.absentDays + Number(row.absent_days || 0),
     incompleteDays: acc.incompleteDays + Number(row.incomplete_days || 0),
     lateDays: acc.lateDays + Number(row.late_days || 0),
@@ -414,7 +449,7 @@ const salarySummary = async (req, res) => {
     overtimeHours: acc.overtimeHours + Number(row.overtime_hours || 0),
     overtimePay: acc.overtimePay + Number(row.overtime_pay || 0),
     estimatedSalary: acc.estimatedSalary + Number(row.estimated_salary || 0),
-  }), { employees: 0, scheduledDays: 0, presentDays: 0, absentDays: 0, incompleteDays: 0, lateDays: 0, workedHours: 0, regularHours: 0, overtimeHours: 0, overtimePay: 0, estimatedSalary: 0 });
+  }), { employees: 0, scheduledDays: 0, presentDays: 0, leaveDays: 0, absentDays: 0, incompleteDays: 0, lateDays: 0, workedHours: 0, regularHours: 0, overtimeHours: 0, overtimePay: 0, estimatedSalary: 0 });
 
   return success(res, {
     period: range,
@@ -502,6 +537,29 @@ const monthlyReport = async (req, res) => {
         ROUND(SUM(GREATEST(day_hours - ot_threshold, 0))::numeric, 2) AS overtime_hours
       FROM day_calc
       GROUP BY employee_id
+    ),
+    leave_days AS (
+      -- See the matching CTE in salarySummary for why: only scheduled-work,
+      -- no-punch days within a leave range count, and hourly employees are
+      -- credited their normal shift hours for those days below.
+      SELECT
+        lv.employee_id,
+        COUNT(*) AS leave_day_count,
+        SUM(GREATEST(EXTRACT(EPOCH FROM (COALESCE(es.shift_end, c.shift_end) - COALESCE(es.shift_start, c.shift_start))) / 3600, 0)) AS leave_hours
+      FROM leaves lv
+      CROSS JOIN company c
+      CROSS JOIN LATERAL generate_series(
+        GREATEST(lv.start_date::timestamptz, $1::timestamptz),
+        LEAST(lv.end_date::timestamptz, ($2::timestamptz - interval '1 second')),
+        interval '1 day'
+      ) AS gs(work_day)
+      LEFT JOIN employee_shifts es ON es.employee_id = lv.employee_id AND es.weekday = EXTRACT(ISODOW FROM gs.work_day)
+      LEFT JOIN daily_bounds db ON db.employee_id = lv.employee_id AND db.work_day = gs.work_day
+      WHERE lv.status = 'scheduled'
+        AND (CASE WHEN es.employee_id IS NOT NULL THEN es.is_working ELSE EXTRACT(ISODOW FROM gs.work_day) BETWEEN 1 AND 5 END)
+        AND NOT EXISTS (SELECT 1 FROM holidays h WHERE h.date = gs.work_day::date)
+        AND db.employee_id IS NULL
+      GROUP BY lv.employee_id
     )
     SELECT
       e.id,
@@ -516,7 +574,8 @@ const monthlyReport = async (req, res) => {
       e.standard_hours,
       COALESCE(p.scheduled_days, 0) AS scheduled_days,
       COALESCE(h.present_days, 0) AS present_days,
-      GREATEST(COALESCE(p.scheduled_days, 0) - COALESCE(h.present_days, 0), 0) AS absent_days,
+      COALESCE(ld.leave_day_count, 0) AS leave_days,
+      GREATEST(COALESCE(p.scheduled_days, 0) - COALESCE(h.present_days, 0) - COALESCE(ld.leave_day_count, 0), 0) AS absent_days,
       COALESCE(h.incomplete_days, 0) AS incomplete_days,
       COALESCE(h.late_days, 0) AS late_days,
       COALESCE(h.punches, 0) AS punches,
@@ -532,16 +591,17 @@ const monthlyReport = async (req, res) => {
       CASE
         WHEN e.salary_type = 'monthly'
           THEN ROUND((
-            e.monthly_salary * COALESCE(h.present_days, 0) / NULLIF(COALESCE(p.scheduled_days, 0), 0)
+            e.monthly_salary * (COALESCE(h.present_days, 0) + COALESCE(ld.leave_day_count, 0)) / NULLIF(COALESCE(p.scheduled_days, 0), 0)
             + (e.monthly_salary / NULLIF(COALESCE(NULLIF(e.standard_hours, 0), 160), 0)) * comp.overtime_multiplier * COALESCE(h.overtime_hours, 0)
           )::numeric, 2)
         ELSE ROUND((
-          e.hourly_rate * COALESCE(h.regular_hours, 0)
+          e.hourly_rate * (COALESCE(h.regular_hours, 0) + COALESCE(ld.leave_hours, 0))
           + e.hourly_rate * comp.overtime_multiplier * COALESCE(h.overtime_hours, 0)
         )::numeric, 2)
       END AS final_salary
     FROM employees e
     LEFT JOIN hours h ON h.employee_id = e.id
+    LEFT JOIN leave_days ld ON ld.employee_id = e.id
     CROSS JOIN period p
     CROSS JOIN company comp
     WHERE ${employeeConditions.join(' AND ')}
@@ -552,6 +612,7 @@ const monthlyReport = async (req, res) => {
     employees: acc.employees + 1,
     scheduledDays: Math.max(acc.scheduledDays, Number(row.scheduled_days || 0)),
     presentDays: acc.presentDays + Number(row.present_days || 0),
+    leaveDays: acc.leaveDays + Number(row.leave_days || 0),
     absentDays: acc.absentDays + Number(row.absent_days || 0),
     incompleteDays: acc.incompleteDays + Number(row.incomplete_days || 0),
     lateDays: acc.lateDays + Number(row.late_days || 0),
@@ -560,7 +621,7 @@ const monthlyReport = async (req, res) => {
     overtimeHours: acc.overtimeHours + Number(row.overtime_hours || 0),
     overtimePay: acc.overtimePay + Number(row.overtime_pay || 0),
     finalSalary: acc.finalSalary + Number(row.final_salary || 0),
-  }), { employees: 0, scheduledDays: 0, presentDays: 0, absentDays: 0, incompleteDays: 0, lateDays: 0, workedHours: 0, regularHours: 0, overtimeHours: 0, overtimePay: 0, finalSalary: 0 });
+  }), { employees: 0, scheduledDays: 0, presentDays: 0, leaveDays: 0, absentDays: 0, incompleteDays: 0, lateDays: 0, workedHours: 0, regularHours: 0, overtimeHours: 0, overtimePay: 0, finalSalary: 0 });
 
   return success(res, {
     period: range,
@@ -636,6 +697,11 @@ const employeeReport = async (req, res) => {
       COALESCE(d.punch_count, 0) AS punch_count,
       d.devices,
       CASE
+        WHEN d.punch_count IS NULL AND EXISTS (
+          SELECT 1 FROM leaves lv
+          WHERE lv.employee_id = $1 AND lv.status = 'scheduled'
+            AND s.work_day::date BETWEEN lv.start_date AND lv.end_date
+        ) THEN 'on_leave'
         WHEN d.punch_count IS NULL THEN 'absent'
         WHEN d.punch_count = 1 THEN 'incomplete'
         WHEN d.check_in_at::time > (COALESCE(es.shift_start, c.shift_start) + (c.grace_minutes || ' minutes')::interval) THEN 'late'
@@ -671,11 +737,20 @@ const employeeReport = async (req, res) => {
   // rows.length now also includes real punches on unscheduled days (see the query
   // above), so the scheduled-days denominator must be counted explicitly.
   const scheduledDays = rows.filter(row => row.is_scheduled).length;
-  const presentDays = rows.filter(row => row.attendance_status !== 'absent').length;
+  const leaveDays = rows.filter(row => row.attendance_status === 'on_leave').length;
+  const presentDays = rows.filter(row => row.attendance_status !== 'absent' && row.attendance_status !== 'on_leave').length;
   const absentDays = rows.filter(row => row.attendance_status === 'absent').length;
   const incompleteDays = rows.filter(row => row.attendance_status === 'incomplete').length;
   const lateDays = rows.filter(row => row.attendance_status === 'late').length;
   const earlyDays = rows.filter(row => row.attendance_status === 'early').length;
+  // A leave day has no punches, so it contributes 0 to worked/regular hours above --
+  // for hourly employees, credit their normal scheduled shift length per leave day
+  // (row.ot_threshold is already that employee's effective shift length for that
+  // day) so paid leave doesn't zero out their pay, matching monthly employees who
+  // are unaffected by construction (paid regardless of days worked).
+  const leaveCreditHours = rows
+    .filter(row => row.attendance_status === 'on_leave')
+    .reduce((sum, row) => sum + Number(row.ot_threshold ?? otThreshold), 0);
 
   const impliedHourlyRate = employee.salary_type === 'monthly'
     ? Number(employee.monthly_salary || 0) / Math.max(Number(employee.standard_hours || 160), 1)
@@ -683,8 +758,8 @@ const employeeReport = async (req, res) => {
   const overtimePay = roundMoney(impliedHourlyRate * otMultiplier * overtimeHours);
 
   const baseSalary = employee.salary_type === 'monthly'
-    ? roundMoney(Number(employee.monthly_salary || 0) * presentDays / Math.max(scheduledDays, 1))
-    : roundMoney(Number(employee.hourly_rate || 0) * regularHours);
+    ? roundMoney(Number(employee.monthly_salary || 0) * (presentDays + leaveDays) / Math.max(scheduledDays, 1))
+    : roundMoney(Number(employee.hourly_rate || 0) * (regularHours + leaveCreditHours));
 
   const finalSalary = roundMoney(baseSalary + overtimePay);
 
@@ -695,6 +770,7 @@ const employeeReport = async (req, res) => {
     summary: {
       scheduledDays,
       presentDays,
+      leaveDays,
       absentDays,
       incompleteDays,
       lateDays,
@@ -750,7 +826,13 @@ const attendanceTrend = async (req, res) => {
       CASE WHEN d.is_scheduled THEN COUNT(e.id) ELSE 0 END AS scheduled,
       COUNT(*) FILTER (WHERE COALESCE(p.punch_count, 0) >= 2) AS present,
       COUNT(*) FILTER (WHERE COALESCE(p.punch_count, 0) = 1) AS incomplete,
-      CASE WHEN d.is_scheduled THEN COUNT(*) FILTER (WHERE COALESCE(p.punch_count, 0) = 0) ELSE 0 END AS absent
+      CASE WHEN d.is_scheduled THEN COUNT(*) FILTER (
+        WHERE COALESCE(p.punch_count, 0) = 0 AND NOT EXISTS (
+          SELECT 1 FROM leaves lv
+          WHERE lv.employee_id = e.id AND lv.status = 'scheduled'
+            AND d.work_day::date BETWEEN lv.start_date AND lv.end_date
+        )
+      ) ELSE 0 END AS absent
     FROM day_flags d
     CROSS JOIN active_employees e
     LEFT JOIN punches p ON p.employee_id = e.id AND p.work_day = d.work_day

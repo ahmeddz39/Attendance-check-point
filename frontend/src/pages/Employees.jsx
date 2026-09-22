@@ -23,6 +23,7 @@ const blank = {
   deviceRole: '',
   cardNumber: '',
   primaryDeviceId: '',
+  leaveBalanceAdjustment: 0,
 }
 
 const WEEKDAYS = [1, 2, 3, 4, 5, 6, 7] // ISODOW: 1=Mon..7=Sun
@@ -45,6 +46,7 @@ export default function Employees() {
   const [shiftMode, setShiftMode] = useState('default') // 'default' | 'standard' | 'perDay'
   const [shiftStandard, setShiftStandard] = useState(DEFAULT_SHIFT)
   const [shiftDays, setShiftDays] = useState(defaultShiftDays)
+  const [leaveBalance, setLeaveBalance] = useState(null)
   const locale = localeFor(i18n.language)
 
   const [bulkMode, setBulkMode] = useState(false)
@@ -71,6 +73,7 @@ export default function Employees() {
     setShiftMode('default')
     setShiftStandard(DEFAULT_SHIFT)
     setShiftDays(defaultShiftDays())
+    setLeaveBalance(null)
   }
 
   const openAdd = () => {
@@ -79,6 +82,7 @@ export default function Employees() {
     setShiftMode('default')
     setShiftStandard(DEFAULT_SHIFT)
     setShiftDays(defaultShiftDays())
+    setLeaveBalance(null)
   }
 
   const openEdit = async (employee) => {
@@ -98,11 +102,16 @@ export default function Employees() {
       hourlyRate: employee.hourly_rate || 0,
       monthlySalary: employee.monthly_salary || 0,
       standardHours: employee.standard_hours || 160,
+      leaveBalanceAdjustment: employee.leave_balance_adjustment || 0,
     })
 
     setShiftMode('default')
     setShiftStandard(DEFAULT_SHIFT)
     setShiftDays(defaultShiftDays())
+
+    authFetch(`/api/leaves/balance/${employee.id}`)
+      .then((r) => r?.json())
+      .then((d) => setLeaveBalance(d?.data || null))
 
     const res = await authFetch(`/api/employees/${employee.id}/shifts`)
     const data = await res?.json().catch(() => null)
@@ -145,6 +154,7 @@ export default function Employees() {
       hourlyRate: Number(form.hourlyRate || 0),
       monthlySalary: Number(form.monthlySalary || 0),
       standardHours: Number(form.standardHours || 0),
+      leaveBalanceAdjustment: Number(form.leaveBalanceAdjustment || 0),
     }
 
     const url = isEdit ? `/api/employees/${employeeId}` : '/api/employees'
@@ -523,6 +533,25 @@ export default function Employees() {
             )}
           </div>
 
+          <div style={shiftSection}>
+            <h3 style={styles.sectionTitle}>{t('employees.leaveBalanceTitle')}</h3>
+            <p style={styles.sectionSub}>{t('employees.leaveBalanceSub')}</p>
+            <div style={styles.standardRow}>
+              <Field
+                label={t('employees.leaveBalanceAdjustmentLabel')} type="number" step="0.5"
+                value={String(form.leaveBalanceAdjustment)}
+                onChange={(value) => setForm((prev) => ({ ...prev, leaveBalanceAdjustment: value }))}
+              />
+            </div>
+            {leaveBalance && (
+              <div style={styles.balanceBox}>
+                <span>{t('leave.balanceAccrued')}: <strong>{t('leave.balanceDays', { count: leaveBalance.accrued })}</strong></span>
+                <span>{t('leave.balanceConsumed')}: <strong>{t('leave.balanceDays', { count: leaveBalance.consumed })}</strong></span>
+                <span>{t('leave.balanceRemaining')}: <strong>{t('leave.balanceDays', { count: leaveBalance.remaining })}</strong></span>
+              </div>
+            )}
+          </div>
+
           {message ? <div style={error}>{message}</div> : null}
         </form>
       </Modal>
@@ -584,6 +613,11 @@ const styles = {
   perDayRow: { display: 'flex', alignItems: 'center', gap: 12 },
   perDayToggle: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, width: 72, flexShrink: 0, textTransform: 'capitalize' },
   perDayTime: { flex: 1, maxWidth: 160 },
+  balanceBox: {
+    display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 12, color: 'var(--muted)',
+    background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px',
+    marginTop: 14,
+  },
 }
 
 const field = { display: 'flex', flexDirection: 'column', gap: 6 }

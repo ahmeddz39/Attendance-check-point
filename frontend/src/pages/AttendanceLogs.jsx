@@ -17,7 +17,7 @@ import useAutoRefresh from '../hooks/useAutoRefresh'
 const today = () => new Date().toISOString().slice(0, 10)
 const month = () => new Date().toISOString().slice(0, 7)
 
-const STATUS_TONE = { present: 'accent', late: 'accent2', early: 'warn', absent: 'danger', incomplete: 'warn', unmatched: 'muted' }
+const STATUS_TONE = { present: 'accent', late: 'accent2', early: 'warn', absent: 'danger', incomplete: 'warn', unmatched: 'muted', on_leave: 'info' }
 
 const toRange = (mode, value) => {
   if (mode === 'month') {

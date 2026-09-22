@@ -92,6 +92,7 @@
 .badge-danger  { background: var(--danger-soft);  color: var(--danger); }
 .badge-warn    { background: var(--warn-soft);    color: var(--warn); }
 .badge-muted   { background: var(--bg3); color: var(--muted); border-color: var(--border); }
+.badge-info    { background: var(--info-soft);    color: var(--info); }
 
 /* ---------- Segmented control / pills ---------- */
 .pill-group {

@@ -336,6 +336,43 @@ const migrate = async () => {
       );
     `);
 
+    // ── Paid leave (30 days/year, accrued 2.5/month, tracked as a running ledger) ─
+    // leave_accrual_start_date backfills to "today" for an existing row, so accrual
+    // starts counting from when this feature goes live; pre-existing balances are
+    // bootstrapped per-employee via leave_balance_adjustment below, not by
+    // backdating this.
+    await client.query(`
+      ALTER TABLE company_settings
+        ADD COLUMN IF NOT EXISTS leave_accrual_start_date DATE NOT NULL DEFAULT date_trunc('month', CURRENT_DATE);
+    `);
+
+    await client.query(`
+      ALTER TABLE employees
+        ADD COLUMN IF NOT EXISTS leave_balance_adjustment NUMERIC(6,2) NOT NULL DEFAULT 0;
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS leaves (
+        id                   UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        employee_id          UUID NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+        covering_employee_id UUID REFERENCES employees(id) ON DELETE SET NULL,
+        start_date           DATE NOT NULL,
+        end_date             DATE NOT NULL,
+        days_count           NUMERIC(6,2) NOT NULL,
+        status               VARCHAR(20) NOT NULL DEFAULT 'scheduled',
+        notes                TEXT,
+        created_by           UUID REFERENCES users(id),
+        created_at           TIMESTAMPTZ DEFAULT NOW(),
+        updated_at           TIMESTAMPTZ DEFAULT NOW(),
+        CHECK (end_date >= start_date)
+      );
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_leaves_employee_id ON leaves(employee_id);
+      CREATE INDEX IF NOT EXISTS idx_leaves_dates ON leaves(start_date, end_date);
+    `);
+
     // ── updated_at trigger function ───────────────────────────────────────────
     await client.query(`
       CREATE OR REPLACE FUNCTION update_updated_at()
@@ -347,7 +384,7 @@ const migrate = async () => {
       $$ LANGUAGE plpgsql;
     `);
 
-    for (const table of ['users', 'reports', 'dashboards', 'widgets', 'attendance_devices', 'employees']) {
+    for (const table of ['users', 'reports', 'dashboards', 'widgets', 'attendance_devices', 'employees', 'leaves']) {
       await client.query(`
         DROP TRIGGER IF EXISTS trg_${table}_updated_at ON ${table};
         CREATE TRIGGER trg_${table}_updated_at

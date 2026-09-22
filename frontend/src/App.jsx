@@ -12,6 +12,7 @@ import Devices   from './pages/Devices'
 import Employees from './pages/Employees'
 import AttendanceLogs from './pages/AttendanceLogs'
 import Salary from './pages/Salary'
+import Leave from './pages/Leave'
 import Settings from './pages/Settings'
 import SettingsGeneral    from './pages/settings/SettingsGeneral'
 import SettingsShift      from './pages/settings/SettingsShift'
@@ -59,6 +60,7 @@ export default function App() {
           <Route path="employees" element={<Private roles={['admin','analyst']}><Employees /></Private>} />
           <Route path="attendance" element={<Private roles={['admin','analyst']}><AttendanceLogs /></Private>} />
           <Route path="salary"    element={<Private roles={['admin','analyst']}><Salary /></Private>} />
+          <Route path="leave"     element={<Private roles={['admin','analyst']}><Leave /></Private>} />
           <Route path="settings" element={<Private roles={['admin','analyst']}><Settings /></Private>}>
             <Route index          element={<Private roles={['admin']}><SettingsGeneral /></Private>} />
             <Route path="users"      element={<Private roles={['admin','analyst']}><Users /></Private>} />

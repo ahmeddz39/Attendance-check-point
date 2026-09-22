@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
 import { useCompany } from '../context/CompanyContext'
-import { LayoutDashboard, BarChart2, FileText, Users, LogOut, CheckSquare, Router, Clock, WalletCards, Settings as SettingsIcon, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen } from 'lucide-react'
+import { LayoutDashboard, BarChart2, FileText, Users, LogOut, CheckSquare, Router, Clock, WalletCards, Palmtree, Settings as SettingsIcon, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen } from 'lucide-react'
 
 const NARROW_QUERY = '(max-width: 900px)'
 
@@ -23,6 +23,7 @@ const nav = [
   { to: '/employees', icon: Users,           key: 'employees', roles: ['admin','analyst'] },
   { to: '/attendance', icon: Clock,          key: 'attendance', roles: ['admin','analyst'] },
   { to: '/salary',    icon: WalletCards,     key: 'salary',    roles: ['admin','analyst'] },
+  { to: '/leave',     icon: Palmtree,        key: 'leave',     roles: ['admin','analyst'] },
   { to: '/settings',  icon: SettingsIcon,    key: 'settings',  roles: ['admin','analyst'] },
 ]
 
