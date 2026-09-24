@@ -17,6 +17,7 @@ const attendanceRoutes = require('./routes/attendance');
 const settingsRoutes   = require('./routes/settings');
 const holidaysRoutes   = require('./routes/holidays');
 const leavesRoutes     = require('./routes/leaves');
+const absenceJustificationsRoutes = require('./routes/absenceJustifications');
 const { errorHandler } = require('./middleware/errorHandler');
 const { requireLicense } = require('./middleware/license');
 const { authenticate } = require('./middleware/auth');
@@ -82,6 +83,7 @@ app.use('/api/attendance', authenticate, requireLicense, attendanceRoutes);
 app.use('/api/settings',  authenticate, requireLicense, settingsRoutes);
 app.use('/api/holidays',  authenticate, requireLicense, holidaysRoutes);
 app.use('/api/leaves',    authenticate, requireLicense, leavesRoutes);
+app.use('/api/absence-justifications', authenticate, requireLicense, absenceJustificationsRoutes);
 
 // ── Uploaded assets (company logo, etc.) ──────────────────────────────────────
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));

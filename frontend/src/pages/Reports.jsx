@@ -22,7 +22,7 @@ const salaryRate = (row = {}) => {
   return type === 'monthly' ? money(row.monthly_salary ?? row.rate) : money(row.hourly_rate ?? row.rate)
 }
 
-const STATUS_TONE = { present: 'accent', late: 'accent2', early: 'warn', absent: 'danger', incomplete: 'warn', unmatched: 'muted', on_leave: 'info' }
+const STATUS_TONE = { present: 'accent', late: 'accent2', early: 'warn', absent: 'danger', incomplete: 'warn', unmatched: 'muted', on_leave: 'info', sick: 'warn', unjustified: 'danger' }
 
 export default function Reports() {
   const { t, i18n } = useTranslation()

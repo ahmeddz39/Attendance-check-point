@@ -25,7 +25,9 @@
       "early": "مغادرة مبكرة",
       "incomplete": "غير مكتمل",
       "unmatched": "غير مطابق",
-      "on_leave": "في إجازة"
+      "on_leave": "في إجازة",
+      "sick": "مريض",
+      "unjustified": "غير مبرر"
     },
     "roles": {
       "admin": "مدير",
@@ -115,6 +117,16 @@
     "colHours": "الساعات",
     "colPunches": "التسجيلات",
     "colDevice": "الجهاز",
+    "colActions": "إجراءات",
+    "justifyAction": "تبرير",
+    "justifyTitle": "تبرير الغياب",
+    "reasonLabel": "السبب",
+    "reasonVacation": "إجازة",
+    "reasonSick": "مرض",
+    "reasonUnjustified": "غير مبرر",
+    "paidLabel": "هل يُدفع هذا اليوم؟",
+    "paidYes": "مدفوع",
+    "paidNo": "غير مدفوع",
     "unmatchedEmployee": "موظف غير مطابق",
     "deviceIdLabel": "معرف الجهاز {{id}}",
     "exportTitleDay": "تقرير الحضور اليومي - {{date}}",

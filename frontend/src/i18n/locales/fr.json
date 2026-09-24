@@ -25,7 +25,9 @@
       "early": "Départ anticipé",
       "incomplete": "Incomplet",
       "unmatched": "Non identifié",
-      "on_leave": "En congé"
+      "on_leave": "En congé",
+      "sick": "Malade",
+      "unjustified": "Injustifié"
     },
     "roles": {
       "admin": "Administrateur",
@@ -115,6 +117,16 @@
     "colHours": "Heures",
     "colPunches": "Pointages",
     "colDevice": "Appareil",
+    "colActions": "Actions",
+    "justifyAction": "Justifier",
+    "justifyTitle": "Justifier l'absence",
+    "reasonLabel": "Motif",
+    "reasonVacation": "Congé",
+    "reasonSick": "Maladie",
+    "reasonUnjustified": "Injustifiée",
+    "paidLabel": "Payer cette journée ?",
+    "paidYes": "Payée",
+    "paidNo": "Non payée",
     "unmatchedEmployee": "Employé non identifié",
     "deviceIdLabel": "ID appareil {{id}}",
     "exportTitleDay": "Rapport de présence journalier - {{date}}",

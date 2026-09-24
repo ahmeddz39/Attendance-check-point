@@ -373,6 +373,27 @@ const migrate = async () => {
       CREATE INDEX IF NOT EXISTS idx_leaves_dates ON leaves(start_date, end_date);
     `);
 
+    // ── Absence justification (sick / unjustified -- vacation goes through the
+    // leaves table above instead) with an explicit, per-day pay decision ──────
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS absence_justifications (
+        id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        employee_id  UUID NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+        date         DATE NOT NULL,
+        reason       VARCHAR(20) NOT NULL,
+        paid         BOOLEAN NOT NULL DEFAULT FALSE,
+        notes        TEXT,
+        created_by   UUID REFERENCES users(id),
+        created_at   TIMESTAMPTZ DEFAULT NOW(),
+        updated_at   TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE (employee_id, date)
+      );
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_absence_justifications_employee_date ON absence_justifications(employee_id, date);
+    `);
+
     // ── updated_at trigger function ───────────────────────────────────────────
     await client.query(`
       CREATE OR REPLACE FUNCTION update_updated_at()
@@ -384,7 +405,7 @@ const migrate = async () => {
       $$ LANGUAGE plpgsql;
     `);
 
-    for (const table of ['users', 'reports', 'dashboards', 'widgets', 'attendance_devices', 'employees', 'leaves']) {
+    for (const table of ['users', 'reports', 'dashboards', 'widgets', 'attendance_devices', 'employees', 'leaves', 'absence_justifications']) {
       await client.query(`
         DROP TRIGGER IF EXISTS trg_${table}_updated_at ON ${table};
         CREATE TRIGGER trg_${table}_updated_at

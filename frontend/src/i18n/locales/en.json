@@ -25,7 +25,9 @@
       "early": "Early Leave",
       "incomplete": "Incomplete",
       "unmatched": "Unmatched",
-      "on_leave": "On Leave"
+      "on_leave": "On Leave",
+      "sick": "Sick",
+      "unjustified": "Unjustified"
     },
     "roles": {
       "admin": "Admin",
@@ -115,6 +117,16 @@
     "colHours": "Hours",
     "colPunches": "Punches",
     "colDevice": "Device",
+    "colActions": "Actions",
+    "justifyAction": "Justify",
+    "justifyTitle": "Justify Absence",
+    "reasonLabel": "Reason",
+    "reasonVacation": "Vacation",
+    "reasonSick": "Sick",
+    "reasonUnjustified": "Unjustified",
+    "paidLabel": "Pay for this day?",
+    "paidYes": "Paid",
+    "paidNo": "Unpaid",
     "unmatchedEmployee": "Unmatched employee",
     "deviceIdLabel": "Device ID {{id}}",
     "exportTitleDay": "Daily Attendance Report - {{date}}",
