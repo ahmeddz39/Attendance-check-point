@@ -298,10 +298,14 @@ export default function AttendanceLogs() {
                       </td>
                       <td>{row.department || '-'}</td>
                       <td>
-                        <Badge tone={STATUS_TONE[row.attendance_status] || 'muted'}>{t(`common.status.${row.attendance_status}`, row.attendance_status || '-')}</Badge>
-                        {['sick', 'unjustified'].includes(row.attendance_status) && (
-                          <div style={styles.muted}>{row.justification_paid ? t('attendance.paidYes') : t('attendance.paidNo')}</div>
-                        )}
+                        <div style={styles.statusCell}>
+                          <Badge tone={STATUS_TONE[row.attendance_status] || 'muted'}>{t(`common.status.${row.attendance_status}`, row.attendance_status || '-')}</Badge>
+                          {['sick', 'unjustified'].includes(row.attendance_status) && (
+                            <Badge tone={row.justification_paid ? 'accent' : 'muted'}>
+                              {row.justification_paid ? t('attendance.paidYes') : t('attendance.paidNo')}
+                            </Badge>
+                          )}
+                        </div>
                       </td>
                       <td className="num" style={{ color:'var(--accent2)' }}>{formatTime(row.check_in_at, i18n.language)}</td>
                       <td className="num" style={{ color: row.check_out_at ? 'var(--accent)' : 'var(--warn)' }}>
@@ -424,6 +428,7 @@ const styles = {
   name:{fontWeight:600},
   muted:{color:'var(--muted)',fontSize:12},
   error:{color:'var(--danger)',fontSize:13},
+  statusCell:{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'},
 }
 
 const field = { display: 'flex', flexDirection: 'column', gap: 6 }
