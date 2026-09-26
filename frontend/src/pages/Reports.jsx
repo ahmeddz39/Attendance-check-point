@@ -135,7 +135,9 @@ export default function Reports() {
     const employee = employeeReport?.employee
     const rows = (employeeReport?.rows || []).map(row => [
       formatDate(row.work_day, i18n.language),
-      t(`common.status.${row.attendance_status}`, row.attendance_status || '-'),
+      ['sick', 'unjustified'].includes(row.attendance_status)
+        ? `${t(`common.status.${row.attendance_status}`)} (${row.justification_paid ? t('attendance.paidYes') : t('attendance.paidNo')})`
+        : t(`common.status.${row.attendance_status}`, row.attendance_status || '-'),
       formatTime(row.check_in_at, i18n.language),
       formatTime(row.check_out_at, i18n.language),
       hours(row.worked_hours),
@@ -419,7 +421,16 @@ function EmployeeReport({ data, t, lng }) {
             {rows.map(row => (
               <tr key={row.work_day}>
                 <td>{formatDate(row.work_day, lng)}</td>
-                <td><Badge tone={STATUS_TONE[row.attendance_status] || 'muted'}>{t(`common.status.${row.attendance_status}`, row.attendance_status || '-')}</Badge></td>
+                <td>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <Badge tone={STATUS_TONE[row.attendance_status] || 'muted'}>{t(`common.status.${row.attendance_status}`, row.attendance_status || '-')}</Badge>
+                    {['sick', 'unjustified'].includes(row.attendance_status) && (
+                      <Badge tone={row.justification_paid ? 'accent' : 'muted'}>
+                        {row.justification_paid ? t('attendance.paidYes') : t('attendance.paidNo')}
+                      </Badge>
+                    )}
+                  </div>
+                </td>
                 <td className="num" style={{color:'var(--accent2)'}}>{formatTime(row.check_in_at, lng)}</td>
                 <td className="num" style={{color:row.check_out_at ? 'var(--accent)' : 'var(--warn)'}}>{formatTime(row.check_out_at, lng)}</td>
                 <td className="num">{hours(row.worked_hours)}</td>
