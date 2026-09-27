@@ -92,11 +92,13 @@ export default function Login() {
 
           {busy && (
             <div className={`scan-overlay ${scanState}`}>
-              <div className="scan-ring" />
-              <div className="scan-icon-wrap">
-                <Fingerprint size={40} className="scan-fingerprint" />
-                <div className="scan-line" />
-                {scanState === 'success' && <CheckCircle2 size={18} className="scan-check" />}
+              <div className="scan-badge">
+                <div className="scan-ring" />
+                <div className="scan-icon-wrap">
+                  <Fingerprint size={40} className="scan-fingerprint" />
+                  <div className="scan-line" />
+                  {scanState === 'success' && <CheckCircle2 size={18} className="scan-check" />}
+                </div>
               </div>
               <div className="scan-label">
                 {scanState === 'scanning' && t('login.scanning')}
