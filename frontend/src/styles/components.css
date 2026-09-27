@@ -243,6 +243,30 @@
 }
 .day-picker-cell.is-today { border-color: var(--accent2); color: var(--accent2); }
 
+/* ---------- Login: animated background decoration ---------- */
+.login-bg-decor {
+  position: absolute; inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.login-bg-icon {
+  position: absolute;
+  color: var(--accent);
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+.login-bg-icon.drift-a { animation-name: bgDriftA; }
+.login-bg-icon.drift-b { animation-name: bgDriftB; color: var(--accent2); }
+@keyframes bgDriftA {
+  0%, 100% { transform: translateY(0) rotate(-6deg); }
+  50%      { transform: translateY(-18px) rotate(4deg); }
+}
+@keyframes bgDriftB {
+  0%, 100% { transform: translateY(0) rotate(6deg); }
+  50%      { transform: translateY(16px) rotate(-4deg); }
+}
+
 /* ---------- Login: fingerprint scan overlay ---------- */
 .scan-overlay {
   position: absolute; inset: 0;
