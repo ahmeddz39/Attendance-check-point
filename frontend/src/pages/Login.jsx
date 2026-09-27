@@ -4,7 +4,10 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import LanguageSwitcher from '../components/LanguageSwitcher'
-import { Sun, Moon } from 'lucide-react'
+import { Sun, Moon, Fingerprint, CheckCircle2 } from 'lucide-react'
+
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+const MIN_SCAN_MS = 1100 // keep the scan animation from flashing by too fast on a quick LAN response
 
 export default function Login() {
   const { t } = useTranslation()
@@ -14,18 +17,23 @@ export default function Login() {
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
   const [error, setError]       = useState('')
-  const [loading, setLoading]   = useState(false)
+  const [scanState, setScanState] = useState('idle') // idle | scanning | success | error
+  const busy = scanState !== 'idle'
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setError(''); setLoading(true)
+    setError('')
+    setScanState('scanning')
     try {
-      await login(email, password)
+      await Promise.all([login(email, password), wait(MIN_SCAN_MS)])
+      setScanState('success')
+      await wait(500)
       navigate('/')
     } catch (err) {
+      setScanState('error')
+      await wait(650)
+      setScanState('idle')
       setError(err.message)
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -54,32 +62,50 @@ export default function Login() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <div style={styles.field}>
-            <label style={styles.label}>{t('login.email')}</label>
-            <input
-              className="input"
-              type="email" value={email} required autoFocus
-              onChange={e => setEmail(e.target.value)}
-              placeholder={t('login.emailPlaceholder')}
-            />
-          </div>
-          <div style={styles.field}>
-            <label style={styles.label}>{t('login.password')}</label>
-            <input
-              className="input"
-              type="password" value={password} required
-              onChange={e => setPassword(e.target.value)}
-              placeholder="••••••••"
-            />
-          </div>
+        <div style={styles.formShell}>
+          <form onSubmit={handleSubmit} style={styles.form}>
+            <div style={styles.field}>
+              <label style={styles.label}>{t('login.email')}</label>
+              <input
+                className="input"
+                type="email" value={email} required autoFocus disabled={busy}
+                onChange={e => setEmail(e.target.value)}
+                placeholder={t('login.emailPlaceholder')}
+              />
+            </div>
+            <div style={styles.field}>
+              <label style={styles.label}>{t('login.password')}</label>
+              <input
+                className="input"
+                type="password" value={password} required disabled={busy}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••"
+              />
+            </div>
 
-          {error && <div style={styles.error}>{error}</div>}
+            {error && <div style={styles.error}>{error}</div>}
 
-          <button className="btn btn-primary" style={{...styles.submit, opacity: loading ? 0.7 : 1}} disabled={loading} type="submit">
-            {loading ? t('login.signingIn') : t('login.signIn')}
-          </button>
-        </form>
+            <button className="btn btn-primary" style={styles.submit} disabled={busy} type="submit">
+              {t('login.signIn')}
+            </button>
+          </form>
+
+          {busy && (
+            <div className={`scan-overlay ${scanState}`}>
+              <div className="scan-ring" />
+              <div className="scan-icon-wrap">
+                <Fingerprint size={40} className="scan-fingerprint" />
+                <div className="scan-line" />
+                {scanState === 'success' && <CheckCircle2 size={18} className="scan-check" />}
+              </div>
+              <div className="scan-label">
+                {scanState === 'scanning' && t('login.scanning')}
+                {scanState === 'success' && t('login.scanSuccess')}
+                {scanState === 'error' && t('login.scanFailed')}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -105,6 +131,7 @@ const styles = {
   },
   brandName: { fontWeight: 600, fontSize: 16, letterSpacing: '-0.3px' },
   brandSub:  { fontSize: 12, color: 'var(--muted)', marginTop: 2 },
+  formShell: { position: 'relative' },
   form:  { display: 'flex', flexDirection: 'column', gap: 18 },
   field: { display: 'flex', flexDirection: 'column', gap: 7 },
   label: { fontSize: 13, fontWeight: 500, color: 'var(--muted)', letterSpacing: '0.3px' },

@@ -413,7 +413,9 @@
     "emailPlaceholder": "you@company.com",
     "password": "كلمة المرور",
     "signIn": "تسجيل الدخول ←",
-    "signingIn": "جارٍ تسجيل الدخول…"
+    "scanning": "جارٍ التحقق من الهوية…",
+    "scanSuccess": "تم منح الوصول",
+    "scanFailed": "تم رفض الوصول"
   },
   "license": {
     "title": "تفعيل هذا التثبيت",

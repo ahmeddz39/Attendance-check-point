@@ -413,7 +413,9 @@
     "emailPlaceholder": "vous@entreprise.com",
     "password": "Mot de passe",
     "signIn": "Se connecter →",
-    "signingIn": "Connexion en cours…"
+    "scanning": "Vérification de l'identité…",
+    "scanSuccess": "Accès autorisé",
+    "scanFailed": "Accès refusé"
   },
   "license": {
     "title": "Activer cette installation",
