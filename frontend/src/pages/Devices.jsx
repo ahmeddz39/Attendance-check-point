@@ -9,7 +9,16 @@ import EmptyState from '../components/EmptyState'
 import { SkeletonBlock } from '../components/Skeleton'
 import { formatDateTime } from '../i18n/formatDate'
 
-const emptyForm = { name: '', brand: 'ZKTeco', model: 'K40', ipAddress: '', port: 4370, protocol: 'zkteco', location: '' }
+const emptyForm = {
+  name: '', brand: 'ZKTeco', model: 'K40', ipAddress: '', port: 4370, protocol: 'zkteco', location: '',
+  httpBaseUrl: '', httpAuthType: 'none', httpUsername: '', httpPassword: '', httpToken: '', httpAdvancedJson: '',
+}
+
+const PROTOCOLS = [
+  { value: 'zkteco', labelKey: 'devices.protocolZkteco' },
+  { value: 'http-generic', labelKey: 'devices.protocolHttpGeneric' },
+]
+const HTTP_AUTH_TYPES = ['none', 'basic', 'digest', 'bearer']
 
 const STATUS_TONE = { online: 'accent', offline: 'danger' }
 
@@ -73,10 +82,39 @@ export default function Devices() {
     e.preventDefault()
     setMessage('')
     try {
+      let settings
+      if (form.protocol === 'http-generic') {
+        let advanced = {}
+        if (form.httpAdvancedJson.trim()) {
+          try {
+            advanced = JSON.parse(form.httpAdvancedJson)
+          } catch {
+            throw new Error(t('devices.invalidAdvancedJson'))
+          }
+        }
+        settings = {
+          baseUrl: form.httpBaseUrl || undefined,
+          authType: form.httpAuthType,
+          ...(form.httpAuthType === 'bearer'
+            ? { token: form.httpToken || undefined }
+            : { username: form.httpUsername || undefined, password: form.httpPassword || undefined }),
+          ...advanced,
+        }
+      }
+
       const res = await authFetch('/api/devices', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, port: Number(form.port) }),
+        body: JSON.stringify({
+          name: form.name,
+          brand: form.brand,
+          model: form.model,
+          ipAddress: form.ipAddress,
+          port: Number(form.port),
+          protocol: form.protocol,
+          location: form.location,
+          ...(settings ? { settings } : {}),
+        }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res?.ok) throw new Error(data?.error?.message || t('devices.couldNotSave'))
@@ -216,12 +254,35 @@ export default function Devices() {
         }
       >
         <form id="device-form" onSubmit={save} style={styles.formGrid}>
+          <select className="input" value={form.protocol} onChange={e => setForm(prev => ({ ...prev, protocol: e.target.value }))}>
+            {PROTOCOLS.map((p) => (<option key={p.value} value={p.value}>{t(p.labelKey)}</option>))}
+          </select>
           <input className="input" placeholder={t('devices.namePlaceholder')} required value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} />
           <input className="input" placeholder={t('devices.brandPlaceholder')} value={form.brand} onChange={e => setForm(prev => ({ ...prev, brand: e.target.value }))} />
           <input className="input" placeholder={t('devices.modelPlaceholder')} value={form.model} onChange={e => setForm(prev => ({ ...prev, model: e.target.value }))} />
           <input className="input" placeholder={t('devices.ipPlaceholder')} required value={form.ipAddress} onChange={e => setForm(prev => ({ ...prev, ipAddress: e.target.value }))} />
           <input className="input" type="number" placeholder={t('devices.portPlaceholder')} value={form.port} onChange={e => setForm(prev => ({ ...prev, port: e.target.value }))} />
           <input className="input" placeholder={t('devices.locationPlaceholder')} value={form.location} onChange={e => setForm(prev => ({ ...prev, location: e.target.value }))} />
+
+          {form.protocol === 'http-generic' && (
+            <div style={styles.httpFields}>
+              <div style={styles.httpFieldsTitle}>{t('devices.httpSectionTitle')}</div>
+              <input className="input" placeholder={t('devices.httpBaseUrlPlaceholder')} value={form.httpBaseUrl} onChange={e => setForm(prev => ({ ...prev, httpBaseUrl: e.target.value }))} />
+              <select className="input" value={form.httpAuthType} onChange={e => setForm(prev => ({ ...prev, httpAuthType: e.target.value }))}>
+                {HTTP_AUTH_TYPES.map((a) => (<option key={a} value={a}>{t(`devices.authType.${a}`)}</option>))}
+              </select>
+              {form.httpAuthType === 'bearer' ? (
+                <input className="input" placeholder={t('devices.httpTokenPlaceholder')} value={form.httpToken} onChange={e => setForm(prev => ({ ...prev, httpToken: e.target.value }))} />
+              ) : form.httpAuthType !== 'none' && (
+                <>
+                  <input className="input" placeholder={t('devices.httpUsernamePlaceholder')} value={form.httpUsername} onChange={e => setForm(prev => ({ ...prev, httpUsername: e.target.value }))} />
+                  <input className="input" type="password" placeholder={t('devices.httpPasswordPlaceholder')} value={form.httpPassword} onChange={e => setForm(prev => ({ ...prev, httpPassword: e.target.value }))} />
+                </>
+              )}
+              <textarea className="input" rows={3} placeholder={t('devices.httpAdvancedPlaceholder')} value={form.httpAdvancedJson} onChange={e => setForm(prev => ({ ...prev, httpAdvancedJson: e.target.value }))} />
+              <div style={styles.httpHint}>{t('devices.httpAdvancedHint')}</div>
+            </div>
+          )}
         </form>
       </Modal>
 
@@ -308,6 +369,9 @@ const styles = {
   actions: { display: 'flex', gap: 6, flexWrap: 'wrap' },
   actionBtn: { height: 32, padding: '0 11px', fontSize: 12, fontWeight: 500 },
   formGrid: { display: 'flex', flexDirection: 'column', gap: 10 },
+  httpFields: { display: 'flex', flexDirection: 'column', gap: 10, padding: 12, borderRadius: 10, background: 'var(--bg3)' },
+  httpFieldsTitle: { fontSize: 12, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.4 },
+  httpHint: { fontSize: 11, color: 'var(--muted)' },
   discoverBody: { display: 'flex', flexDirection: 'column', gap: 10 },
   scanMessage: { fontSize: 13, color: 'var(--muted)', fontWeight: 500 },
   scanHint: { fontSize: 12, color: 'var(--muted)' },

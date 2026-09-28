@@ -105,6 +105,53 @@ guest Wi-Fi.
 
 ---
 
+## Biometric terminal compatibility
+
+Device I/O goes through an adapter registry (`backend/src/services/deviceAdapters/`), keyed
+by the `protocol` field set on each device:
+
+- **`zkteco`** (default) — ZKTeco's own "Pull SDK" binary protocol, port 4370. This is what
+  the auto-discovery scan finds and what every ZKTeco fingerprint/card terminal speaks out
+  of the box. No configuration beyond IP/port is needed.
+- **`http-generic`** — a configurable adapter for any terminal that exposes an HTTP/REST API
+  instead. It is **not tied to one vendor** — set it from the "Add Device" form's protocol
+  dropdown, with a Base URL, an auth type (none/Basic/Digest/Bearer), and credentials. Its
+  field and path defaults match Hikvision's public ISAPI standard (also followed by several
+  OEM/Dahua-family lines), so a compatible terminal often needs nothing more than those
+  fields. For a terminal that nests its JSON differently or uses different field names, use
+  the "Advanced settings (JSON)" box to override any of:
+
+  ```json
+  {
+    "usersPath": "/ISAPI/AccessControl/UserInfo/Search",
+    "logsPath": "/ISAPI/AccessControl/AcsEvent",
+    "usersListPath": "UserInfoSearch.UserInfo",
+    "logsListPath": "AcsEvent.InfoList",
+    "userIdField": "employeeNo",
+    "userNameField": "name",
+    "cardField": "cardNo",
+    "eventUserField": "employeeNoString",
+    "eventTimeField": "time",
+    "eventTypeField": "eventType"
+  }
+  ```
+
+  **This shape is written against public ISAPI documentation, not verified against a
+  physical unit.** Before relying on it for a real terminal, confirm the field and path
+  names against that terminal's own API documentation, and test an import against it first.
+
+- **A newer ZKTeco face-recognition terminal that won't connect on port 4370** is very
+  likely in "Cloud Server Mode" (ADMS push mode), where the device pushes data to a server
+  instead of being polled. That is a device-side setting to switch back to standard
+  pull-mode communication, not something fixable in this app's configuration today — this
+  app only supports the pull model.
+
+Auto-discovery (the "Discover" button) only ever identifies `zkteco` devices, since a plain
+TCP port probe can't tell what's actually listening. A `http-generic` device must be added
+manually.
+
+---
+
 ## Windows
 
 Requirements: Windows 10/11, PowerShell 7+, an elevated ("Run as Administrator") prompt,
