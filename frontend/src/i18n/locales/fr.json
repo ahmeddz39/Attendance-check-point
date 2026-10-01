@@ -18,6 +18,8 @@
     "perMonth": "/ mois",
     "deviceFilterLabel": "Appareil",
     "allDevices": "Tous les appareils",
+    "statusFilterLabel": "Statut",
+    "allStatuses": "Tous les statuts",
     "status": {
       "present": "Présent",
       "absent": "Absent",
@@ -130,7 +132,8 @@
     "unmatchedEmployee": "Employé non identifié",
     "deviceIdLabel": "ID appareil {{id}}",
     "exportTitleDay": "Rapport de présence journalier - {{date}}",
-    "exportTitleMonth": "Registre de présence mensuel - {{month}}"
+    "exportTitleMonth": "Registre de présence mensuel - {{month}}",
+    "exportTitleStatusSuffix": " — {{status}}"
   },
   "salary": {
     "title": "Salaires",

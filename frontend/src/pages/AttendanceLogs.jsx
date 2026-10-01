@@ -20,6 +20,7 @@ const month = () => new Date().toISOString().slice(0, 7)
 
 const STATUS_TONE = { present: 'accent', late: 'accent2', early: 'warn', absent: 'danger', incomplete: 'warn', unmatched: 'muted', on_leave: 'info', sick: 'warn', unjustified: 'danger' }
 const JUSTIFIABLE = ['absent', 'sick', 'unjustified']
+const STATUS_OPTIONS = Object.keys(STATUS_TONE)
 
 // row.work_day is a UTC timestamp representing local midnight -- extract the
 // LOCAL calendar date (matching what formatDate already displays) rather
@@ -55,6 +56,7 @@ export default function AttendanceLogs() {
   const [loading, setLoading] = useState(false)
   const [devices, setDevices] = useState([])
   const [deviceId, setDeviceId] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
   const [employees, setEmployees] = useState([])
   const [justifyRow, setJustifyRow] = useState(null)
   const [justifyForm, setJustifyForm] = useState({ reason: 'sick', paid: true, coveringEmployeeId: '', notes: '' })
@@ -94,6 +96,11 @@ export default function AttendanceLogs() {
 
   useEffect(() => { load() }, [authFetch, range.from, range.to, deviceId])
   useAutoRefresh(() => load(true), 60000)
+
+  const filteredRows = useMemo(
+    () => statusFilter ? rows.filter(row => row.attendance_status === statusFilter) : rows,
+    [rows, statusFilter]
+  )
 
   const submitSearch = (e) => {
     e.preventDefault()
@@ -172,7 +179,7 @@ export default function AttendanceLogs() {
     }
   }
 
-  const exportRows = () => rows.map(row => [
+  const exportRows = () => filteredRows.map(row => [
     formatDate(row.work_day, i18n.language),
     row.first_name ? `${row.first_name} ${row.last_name || ''}` : t('attendance.unmatchedEmployee'),
     row.employee_code || row.device_user_id || '-',
@@ -194,10 +201,11 @@ export default function AttendanceLogs() {
     t('attendance.colPunches'), t('attendance.colDevice'),
   ]
 
-  const exportTitle = mode === 'month'
+  const exportTitle = (mode === 'month'
     ? t('attendance.exportTitleMonth', { month: monthValue })
     : t('attendance.exportTitleDay', { date: dateValue })
-  const exportFilename = `attendance-${mode === 'month' ? monthValue : dateValue}`
+  ) + (statusFilter ? t('attendance.exportTitleStatusSuffix', { status: t(`common.status.${statusFilter}`) }) : '')
+  const exportFilename = `attendance-${mode === 'month' ? monthValue : dateValue}${statusFilter ? `-${statusFilter}` : ''}`
 
   const handleExportPdf = () => {
     const branding = {
@@ -205,7 +213,7 @@ export default function AttendanceLogs() {
       logoUrl: logoUrl ? `${window.location.origin}${logoUrl}` : null,
       dir: i18n.dir(),
       generatedLabel: t('reports.exportGeneratedOn', { date: formatDateTime(new Date(), i18n.language) }),
-      recordsLabel: t('reports.exportRecordCount', { count: rows.length }),
+      recordsLabel: t('reports.exportRecordCount', { count: filteredRows.length }),
     }
     exportPdf(tableHtml(exportTitle, exportHeaders, exportRows(), branding))
   }
@@ -215,7 +223,7 @@ export default function AttendanceLogs() {
       companyName,
       dir: i18n.dir(),
       generatedLabel: t('reports.exportGeneratedOn', { date: formatDateTime(new Date(), i18n.language) }),
-      recordsLabel: t('reports.exportRecordCount', { count: rows.length }),
+      recordsLabel: t('reports.exportRecordCount', { count: filteredRows.length }),
     }
     downloadBlob(
       tableHtml(exportTitle, exportHeaders, exportRows(), branding),
@@ -248,6 +256,11 @@ export default function AttendanceLogs() {
           </select>
         )}
 
+        <select className="select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+          <option value="">{t('common.allStatuses')}</option>
+          {STATUS_OPTIONS.map(s => <option key={s} value={s}>{t(`common.status.${s}`)}</option>)}
+        </select>
+
         <form style={styles.search} onSubmit={submitSearch}>
           <Search size={15} color="var(--muted)" />
           <input
@@ -260,14 +273,14 @@ export default function AttendanceLogs() {
         </form>
 
         <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
-          <button className="btn btn-ghost" onClick={handleExportPdf} type="button" disabled={rows.length === 0}><Download size={14} /> {t('reports.pdf')}</button>
-          <button className="btn btn-ghost" onClick={handleExportExcel} type="button" disabled={rows.length === 0}><FileSpreadsheet size={14} /> {t('reports.excel')}</button>
-          <button className="btn btn-ghost" onClick={handleExportCsv} type="button" disabled={rows.length === 0}><FileText size={14} /> {t('reports.csv')}</button>
+          <button className="btn btn-ghost" onClick={handleExportPdf} type="button" disabled={filteredRows.length === 0}><Download size={14} /> {t('reports.pdf')}</button>
+          <button className="btn btn-ghost" onClick={handleExportExcel} type="button" disabled={filteredRows.length === 0}><FileSpreadsheet size={14} /> {t('reports.excel')}</button>
+          <button className="btn btn-ghost" onClick={handleExportCsv} type="button" disabled={filteredRows.length === 0}><FileText size={14} /> {t('reports.csv')}</button>
         </div>
       </div>
 
       <div className="card">
-        {loading ? <div style={{ padding: 20 }}><SkeletonBlock height={220} /></div> : rows.length === 0 ? (
+        {loading ? <div style={{ padding: 20 }}><SkeletonBlock height={220} /></div> : filteredRows.length === 0 ? (
           <EmptyState icon={Clock}>{t('attendance.noRecords')}</EmptyState>
         ) : (
           <div style={{ overflowX: 'auto' }}>
@@ -287,7 +300,7 @@ export default function AttendanceLogs() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map(row => {
+                {filteredRows.map(row => {
                   const employee = row.first_name ? `${row.first_name} ${row.last_name || ''}` : t('attendance.unmatchedEmployee')
                   return (
                     <tr key={`${row.group_key}-${row.work_day}`}>

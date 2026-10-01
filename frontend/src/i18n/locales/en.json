@@ -18,6 +18,8 @@
     "perMonth": "/ month",
     "deviceFilterLabel": "Device",
     "allDevices": "All devices",
+    "statusFilterLabel": "Status",
+    "allStatuses": "All statuses",
     "status": {
       "present": "Present",
       "absent": "Absent",
@@ -130,7 +132,8 @@
     "unmatchedEmployee": "Unmatched employee",
     "deviceIdLabel": "Device ID {{id}}",
     "exportTitleDay": "Daily Attendance Report - {{date}}",
-    "exportTitleMonth": "Monthly Attendance Log - {{month}}"
+    "exportTitleMonth": "Monthly Attendance Log - {{month}}",
+    "exportTitleStatusSuffix": " — {{status}}"
   },
   "salary": {
     "title": "Salary",

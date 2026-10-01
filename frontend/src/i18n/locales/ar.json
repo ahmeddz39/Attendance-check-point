@@ -18,6 +18,8 @@
     "perMonth": "/ شهر",
     "deviceFilterLabel": "الجهاز",
     "allDevices": "كل الأجهزة",
+    "statusFilterLabel": "الحالة",
+    "allStatuses": "كل الحالات",
     "status": {
       "present": "حاضر",
       "absent": "غائب",
@@ -130,7 +132,8 @@
     "unmatchedEmployee": "موظف غير مطابق",
     "deviceIdLabel": "معرف الجهاز {{id}}",
     "exportTitleDay": "تقرير الحضور اليومي - {{date}}",
-    "exportTitleMonth": "سجل الحضور الشهري - {{month}}"
+    "exportTitleMonth": "سجل الحضور الشهري - {{month}}",
+    "exportTitleStatusSuffix": " — {{status}}"
   },
   "salary": {
     "title": "الرواتب",
