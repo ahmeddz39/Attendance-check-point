@@ -36,7 +36,8 @@ const money = (value) =>
 
 export default function Employees() {
   const { t, i18n } = useTranslation()
-  const { authFetch } = useAuth()
+  const { authFetch, user: me } = useAuth()
+  const isAdmin = me?.role === 'admin'
   const [employees, setEmployees] = useState([])
   const [devices, setDevices] = useState([])
   const [panel, setPanel] = useState(null) // 'add' | { type:'edit', employee } | null
@@ -215,9 +216,11 @@ export default function Employees() {
     for (const emp of employees) {
       initial[emp.id] = {
         department: emp.department || '',
-        salaryType: emp.salary_type || 'hourly',
-        hourlyRate: Number(emp.hourly_rate || 0),
-        monthlySalary: Number(emp.monthly_salary || 0),
+        ...(isAdmin ? {
+          salaryType: emp.salary_type || 'hourly',
+          hourlyRate: Number(emp.hourly_rate || 0),
+          monthlySalary: Number(emp.monthly_salary || 0),
+        } : {}),
       }
     }
     setBulkEdits(initial)
@@ -240,9 +243,11 @@ export default function Employees() {
     if (!b) return false
     return (
       b.department !== (emp.department || '') ||
-      b.salaryType !== (emp.salary_type || 'hourly') ||
-      Number(b.hourlyRate || 0) !== Number(emp.hourly_rate || 0) ||
-      Number(b.monthlySalary || 0) !== Number(emp.monthly_salary || 0)
+      (isAdmin && (
+        b.salaryType !== (emp.salary_type || 'hourly') ||
+        Number(b.hourlyRate || 0) !== Number(emp.hourly_rate || 0) ||
+        Number(b.monthlySalary || 0) !== Number(emp.monthly_salary || 0)
+      ))
     )
   }
 
@@ -264,9 +269,11 @@ export default function Employees() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           department: b.department,
-          salaryType: b.salaryType,
-          hourlyRate: Number(b.hourlyRate || 0),
-          monthlySalary: Number(b.monthlySalary || 0),
+          ...(isAdmin ? {
+            salaryType: b.salaryType,
+            hourlyRate: Number(b.hourlyRate || 0),
+            monthlySalary: Number(b.monthlySalary || 0),
+          } : {}),
         }),
       }).then((res) => res?.ok)
     }))
@@ -320,7 +327,13 @@ export default function Employees() {
         <table className="table">
           <thead>
             <tr>
-              {[t('employees.colEmployee'), t('employees.colDepartment'), t('employees.colSalaryRule'), t('employees.colCardNo'), t('employees.colActions')].map((item) => (
+              {[
+                t('employees.colEmployee'),
+                t('employees.colDepartment'),
+                ...(isAdmin ? [t('employees.colSalaryRule')] : []),
+                t('employees.colCardNo'),
+                t('employees.colActions'),
+              ].map((item) => (
                 <th key={item}>{item}</th>
               ))}
             </tr>
@@ -346,37 +359,39 @@ export default function Employees() {
                     />
                   ) : (item.department || '-')}
                 </td>
-                <td>
-                  {bulkMode && edit ? (
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <select
-                        className="select"
-                        style={styles.bulkSelect}
-                        value={edit.salaryType}
-                        onChange={(e) => updateBulkField(item.id, 'salaryType', e.target.value)}
-                      >
-                        <option value="hourly">{t('common.hourly')}</option>
-                        <option value="monthly">{t('common.monthly')}</option>
-                      </select>
-                      <input
-                        className="input"
-                        style={styles.bulkInput}
-                        type="number" min={0} step="0.01"
-                        value={edit.salaryType === 'hourly' ? edit.hourlyRate : edit.monthlySalary}
-                        onChange={(e) => updateBulkField(item.id, edit.salaryType === 'hourly' ? 'hourlyRate' : 'monthlySalary', e.target.value)}
-                      />
-                    </div>
-                  ) : (
-                    <>
-                      <div style={styles.strong}>
-                        {item.salary_type === 'monthly'
-                          ? `${money(item.monthly_salary)} ${t('common.perMonth')}`
-                          : `${money(item.hourly_rate)} ${t('common.perHour')}`}
+                {isAdmin && (
+                  <td>
+                    {bulkMode && edit ? (
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <select
+                          className="select"
+                          style={styles.bulkSelect}
+                          value={edit.salaryType}
+                          onChange={(e) => updateBulkField(item.id, 'salaryType', e.target.value)}
+                        >
+                          <option value="hourly">{t('common.hourly')}</option>
+                          <option value="monthly">{t('common.monthly')}</option>
+                        </select>
+                        <input
+                          className="input"
+                          style={styles.bulkInput}
+                          type="number" min={0} step="0.01"
+                          value={edit.salaryType === 'hourly' ? edit.hourlyRate : edit.monthlySalary}
+                          onChange={(e) => updateBulkField(item.id, edit.salaryType === 'hourly' ? 'hourlyRate' : 'monthlySalary', e.target.value)}
+                        />
                       </div>
-                      <div style={styles.muted}>{item.salary_type === 'monthly' ? t('common.monthly') : t('common.hourly')}</div>
-                    </>
-                  )}
-                </td>
+                    ) : (
+                      <>
+                        <div style={styles.strong}>
+                          {item.salary_type === 'monthly'
+                            ? `${money(item.monthly_salary)} ${t('common.perMonth')}`
+                            : `${money(item.hourly_rate)} ${t('common.perHour')}`}
+                        </div>
+                        <div style={styles.muted}>{item.salary_type === 'monthly' ? t('common.monthly') : t('common.hourly')}</div>
+                      </>
+                    )}
+                  </td>
+                )}
                 <td>{item.card_number || '-'}</td>
                 <td>
                   <div style={{ display: 'flex', gap: 6 }}>
@@ -405,7 +420,7 @@ export default function Employees() {
             })}
             {employees.length === 0 ? (
               <tr>
-                <td colSpan={5}>
+                <td colSpan={isAdmin ? 5 : 4}>
                   <EmptyState icon={Users}>{t('employees.noEmployees')}</EmptyState>
                 </td>
               </tr>
@@ -439,26 +454,31 @@ export default function Employees() {
             <Field label={t('employees.position')} value={form.position} onChange={(value) => setForm((prev) => ({ ...prev, position: value }))} />
 
             <Field label={t('employees.cardNumber')} value={form.cardNumber} onChange={(value) => setForm((prev) => ({ ...prev, cardNumber: value }))} />
-            <SelectField
-              label={t('employees.salaryType')}
-              value={form.salaryType}
-              onChange={(value) => setForm((prev) => ({ ...prev, salaryType: value }))}
-              options={[
-                { value: 'hourly', label: t('common.hourly') },
-                { value: 'monthly', label: t('common.monthly') },
-              ]}
-            />
 
-            {form.salaryType === 'hourly' ? (
-              <Field label={t('employees.hourlyRate')} type="number" min={0} step="0.01" value={String(form.hourlyRate)} onChange={(value) => setForm((prev) => ({ ...prev, hourlyRate: Number(value || 0) }))} />
-            ) : (
-              <Field label={t('employees.monthlySalary')} type="number" min={0} step="0.01" value={String(form.monthlySalary)} onChange={(value) => setForm((prev) => ({ ...prev, monthlySalary: Number(value || 0) }))} />
-            )}
+            {isAdmin && (
+              <>
+                <SelectField
+                  label={t('employees.salaryType')}
+                  value={form.salaryType}
+                  onChange={(value) => setForm((prev) => ({ ...prev, salaryType: value }))}
+                  options={[
+                    { value: 'hourly', label: t('common.hourly') },
+                    { value: 'monthly', label: t('common.monthly') },
+                  ]}
+                />
 
-            {form.salaryType === 'hourly' ? (
-              <Field label={t('employees.monthlyHours')} type="number" min={0} step="0.5" value={String(form.standardHours)} onChange={(value) => setForm((prev) => ({ ...prev, standardHours: Number(value || 0) }))} />
-            ) : (
-              <Field label={t('employees.payrollMonthHours')} type="number" min={0} step="0.5" value={String(form.standardHours)} onChange={(value) => setForm((prev) => ({ ...prev, standardHours: Number(value || 0) }))} />
+                {form.salaryType === 'hourly' ? (
+                  <Field label={t('employees.hourlyRate')} type="number" min={0} step="0.01" value={String(form.hourlyRate)} onChange={(value) => setForm((prev) => ({ ...prev, hourlyRate: Number(value || 0) }))} />
+                ) : (
+                  <Field label={t('employees.monthlySalary')} type="number" min={0} step="0.01" value={String(form.monthlySalary)} onChange={(value) => setForm((prev) => ({ ...prev, monthlySalary: Number(value || 0) }))} />
+                )}
+
+                {form.salaryType === 'hourly' ? (
+                  <Field label={t('employees.monthlyHours')} type="number" min={0} step="0.5" value={String(form.standardHours)} onChange={(value) => setForm((prev) => ({ ...prev, standardHours: Number(value || 0) }))} />
+                ) : (
+                  <Field label={t('employees.payrollMonthHours')} type="number" min={0} step="0.5" value={String(form.standardHours)} onChange={(value) => setForm((prev) => ({ ...prev, standardHours: Number(value || 0) }))} />
+                )}
+              </>
             )}
 
             <Field label={t('employees.deviceUid')} value={String(form.deviceUid || '')} onChange={(value) => setForm((prev) => ({ ...prev, deviceUid: value }))} />

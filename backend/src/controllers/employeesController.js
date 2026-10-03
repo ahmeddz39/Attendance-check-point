@@ -3,6 +3,16 @@ const { success, created, noContent, notFound, badRequest } = require('../utils/
 
 const WEEKDAYS = [1, 2, 3, 4, 5, 6, 7]; // ISODOW: 1=Mon..7=Sun
 
+// Salary data is admin-only -- strip it from anything a non-admin reads back,
+// on top of the route only letting an admin set it in the first place.
+const SALARY_FIELDS = ['salary_type', 'hourly_rate', 'monthly_salary'];
+const sanitizeForRole = (row, role) => {
+  if (role === 'admin' || !row) return row;
+  const copy = { ...row };
+  for (const field of SALARY_FIELDS) delete copy[field];
+  return copy;
+};
+
 const EMPLOYEE_FIELDS = `
   id, employee_code, primary_device_id, device_uid, device_user_id,
   device_role, card_number, first_name, last_name, email, phone,
@@ -31,17 +41,20 @@ const listEmployees = async (req, res) => {
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
   const { rows } = await query(`SELECT ${EMPLOYEE_FIELDS} FROM employees ${where} ORDER BY first_name, last_name`, params);
-  return success(res, rows);
+  return success(res, rows.map((row) => sanitizeForRole(row, req.user.role)));
 };
 
 const createEmployee = async (req, res) => {
+  const isAdmin = req.user.role === 'admin';
   const {
     employeeCode, deviceUserId, firstName, lastName, email, phone,
     deviceUid, deviceRole, cardNumber, primaryDeviceId,
-    department, position, salaryType = 'hourly', hourlyRate = 0,
-    monthlySalary = 0, standardHours = 160, isActive = true, metadata = {},
+    department, position, standardHours = 160, isActive = true, metadata = {},
     leaveBalanceAdjustment = 0,
   } = req.body;
+  const salaryType = isAdmin ? (req.body.salaryType || 'hourly') : 'hourly';
+  const hourlyRate = isAdmin ? (req.body.hourlyRate || 0) : 0;
+  const monthlySalary = isAdmin ? (req.body.monthlySalary || 0) : 0;
 
   const { rows } = await query(`
     INSERT INTO employees
@@ -52,16 +65,19 @@ const createEmployee = async (req, res) => {
     RETURNING ${EMPLOYEE_FIELDS}
   `, [employeeCode, primaryDeviceId, deviceUid, deviceUserId, deviceRole, cardNumber, firstName, lastName, email, phone, department, position, salaryType, hourlyRate, monthlySalary, standardHours, isActive, JSON.stringify(metadata), leaveBalanceAdjustment]);
 
-  return created(res, rows[0]);
+  return created(res, sanitizeForRole(rows[0], req.user.role));
 };
 
 const updateEmployee = async (req, res) => {
+  const isAdmin = req.user.role === 'admin';
   const {
     employeeCode, deviceUserId, firstName, lastName, email, phone,
     deviceUid, deviceRole, cardNumber, primaryDeviceId, metadata,
-    department, position, salaryType, hourlyRate, monthlySalary,
-    standardHours, isActive, leaveBalanceAdjustment,
+    department, position, standardHours, isActive, leaveBalanceAdjustment,
   } = req.body;
+  const salaryType = isAdmin ? req.body.salaryType : undefined;
+  const hourlyRate = isAdmin ? req.body.hourlyRate : undefined;
+  const monthlySalary = isAdmin ? req.body.monthlySalary : undefined;
 
   const { rows } = await query(`
     UPDATE employees SET
@@ -89,7 +105,7 @@ const updateEmployee = async (req, res) => {
   `, [employeeCode, primaryDeviceId, deviceUid, deviceUserId, deviceRole, cardNumber, firstName, lastName, email, phone, department, position, salaryType, hourlyRate, monthlySalary, standardHours, isActive, metadata ? JSON.stringify(metadata) : null, leaveBalanceAdjustment, req.params.id]);
 
   if (!rows.length) return notFound(res, 'Employee not found');
-  return success(res, rows[0]);
+  return success(res, sanitizeForRole(rows[0], req.user.role));
 };
 
 const deleteEmployee = async (req, res) => {
