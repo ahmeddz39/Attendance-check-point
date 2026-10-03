@@ -22,7 +22,7 @@ const nav = [
   { to: '/reports',   icon: FileText,        key: 'reports' },
   { to: '/employees', icon: Users,           key: 'employees', roles: ['admin','analyst'] },
   { to: '/attendance', icon: Clock,          key: 'attendance', roles: ['admin','analyst'] },
-  { to: '/salary',    icon: WalletCards,     key: 'salary',    roles: ['admin','analyst'] },
+  { to: '/salary',    icon: WalletCards,     key: 'salary',    roles: ['admin'] },
   { to: '/leave',     icon: Palmtree,        key: 'leave',     roles: ['admin','analyst'] },
   { to: '/settings',  icon: SettingsIcon,    key: 'settings',  roles: ['admin','analyst'] },
 ]

@@ -31,7 +31,7 @@ export default function Dashboard() {
   const load = () => {
     Promise.all([
       authFetch('/api/attendance/reports/trend?days=7').then(r => r?.json()),
-      authFetch(`/api/attendance/salary?month=${currentMonth()}`).then(r => r?.json()),
+      user?.role === 'admin' ? authFetch(`/api/attendance/salary?month=${currentMonth()}`).then(r => r?.json()) : Promise.resolve(null),
       authFetch('/api/devices').then(r => r?.json()),
       authFetch('/api/attendance/logs').then(r => r?.json()),
     ]).then(([trendRes, s, d, l]) => {

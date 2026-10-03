@@ -19,7 +19,7 @@ router.use(authorize('admin', 'analyst'));
 
 router.get('/logs', asyncHandler(listLogs));
 router.get('/daily', asyncHandler(listDailyAttendance));
-router.get('/salary', asyncHandler(salarySummary));
+router.get('/salary', authorize('admin'), asyncHandler(salarySummary));
 router.get('/reports/monthly', asyncHandler(monthlyReport));
 router.get('/reports/trend', asyncHandler(attendanceTrend));
 router.get('/reports/employees/:employeeId', asyncHandler(employeeReport));

@@ -59,7 +59,7 @@ export default function App() {
           <Route path="reports"   element={<Reports />} />
           <Route path="employees" element={<Private roles={['admin','analyst']}><Employees /></Private>} />
           <Route path="attendance" element={<Private roles={['admin','analyst']}><AttendanceLogs /></Private>} />
-          <Route path="salary"    element={<Private roles={['admin','analyst']}><Salary /></Private>} />
+          <Route path="salary"    element={<Private roles={['admin']}><Salary /></Private>} />
           <Route path="leave"     element={<Private roles={['admin','analyst']}><Leave /></Private>} />
           <Route path="settings" element={<Private roles={['admin','analyst']}><Settings /></Private>}>
             <Route index          element={<Private roles={['admin']}><SettingsGeneral /></Private>} />
