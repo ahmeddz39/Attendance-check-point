@@ -178,7 +178,7 @@
     "firstName": "First name",
     "lastName": "Last name",
     "email": "Email",
-    "passwordMin": "Password (min 8 chars)",
+    "passwordMin": "Password (min 10 chars)",
     "selectRole": "Select role…",
     "creating": "Creating…",
     "createUser": "Create User",
@@ -202,7 +202,9 @@
     "saveChanges": "Save changes",
     "updateFailed": "Failed to update user",
     "deleteFailed": "Failed to delete user",
-    "confirmDelete": "Delete {{name}}? This cannot be undone."
+    "confirmDelete": "Delete {{name}}? This cannot be undone.",
+    "newPasswordOptional": "New password (leave blank to keep current)",
+    "passwordTooShort": "Password must be at least 10 characters"
   },
   "devices": {
     "title": "Devices",

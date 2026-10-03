@@ -64,21 +64,29 @@ const createUser = async (req, res) => {
 
 // PATCH /api/users/:id
 const updateUser = async (req, res) => {
-  const { firstName, lastName, roleId, isActive } = req.body;
+  const { firstName, lastName, roleId, isActive, password } = req.body;
   const { id } = req.params;
 
   const { rows: existing } = await query(`SELECT id FROM users WHERE id = $1`, [id]);
   if (!existing.length) return notFound(res, 'User not found');
 
+  const passwordHash = password ? await bcrypt.hash(password, 12) : null;
+
   await query(
     `UPDATE users SET
-      first_name = COALESCE($1, first_name),
-      last_name  = COALESCE($2, last_name),
-      role_id    = COALESCE($3, role_id),
-      is_active  = COALESCE($4, is_active)
-     WHERE id = $5`,
-    [firstName, lastName, roleId, isActive, id]
+      first_name    = COALESCE($1, first_name),
+      last_name     = COALESCE($2, last_name),
+      role_id       = COALESCE($3, role_id),
+      is_active     = COALESCE($4, is_active),
+      password_hash = COALESCE($5, password_hash)
+     WHERE id = $6`,
+    [firstName, lastName, roleId, isActive, passwordHash, id]
   );
+
+  // Changing the password should kick out any session signed in with the old one.
+  if (passwordHash) {
+    await query(`DELETE FROM refresh_tokens WHERE user_id = $1`, [id]);
+  }
 
   const { rows: [user] } = await query(
     `SELECT ${USER_FIELDS} FROM users u JOIN roles r ON r.id = u.role_id WHERE u.id = $1`, [id]

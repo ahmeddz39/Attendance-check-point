@@ -178,7 +178,7 @@
     "firstName": "Prénom",
     "lastName": "Nom",
     "email": "E-mail",
-    "passwordMin": "Mot de passe (8 caractères min.)",
+    "passwordMin": "Mot de passe (10 caractères min.)",
     "selectRole": "Choisir un rôle…",
     "creating": "Création…",
     "createUser": "Créer l'utilisateur",
@@ -202,7 +202,9 @@
     "saveChanges": "Enregistrer les modifications",
     "updateFailed": "Échec de la mise à jour de l'utilisateur",
     "deleteFailed": "Échec de la suppression de l'utilisateur",
-    "confirmDelete": "Supprimer {{name}} ? Cette action est irréversible."
+    "confirmDelete": "Supprimer {{name}} ? Cette action est irréversible.",
+    "newPasswordOptional": "Nouveau mot de passe (laisser vide pour conserver l'actuel)",
+    "passwordTooShort": "Le mot de passe doit contenir au moins 10 caractères"
   },
   "devices": {
     "title": "Appareils",

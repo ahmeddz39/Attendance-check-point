@@ -33,6 +33,7 @@ router.post('/',
 router.patch('/:id',
   authorize('admin'),
   param('id').isUUID(),
+  body('password').optional({ values: 'falsy' }).isLength({ min: 10 }),
   validateRequest,
   audit('user.update', 'users'),
   updateUser

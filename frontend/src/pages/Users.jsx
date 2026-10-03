@@ -22,7 +22,7 @@ export default function Users() {
   const [saving, setSaving]   = useState(false)
   const [error, setError]     = useState('')
   const [editUser, setEditUser] = useState(null)
-  const [editForm, setEditForm] = useState({ firstName: '', lastName: '', roleId: '' })
+  const [editForm, setEditForm] = useState({ firstName: '', lastName: '', roleId: '', password: '' })
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState('')
 
@@ -71,17 +71,24 @@ export default function Users() {
 
   const openEdit = (u) => {
     setEditUser(u)
-    setEditForm({ firstName: u.first_name || '', lastName: u.last_name || '', roleId: u.role_id })
+    setEditForm({ firstName: u.first_name || '', lastName: u.last_name || '', roleId: u.role_id, password: '' })
     setEditError('')
   }
 
   const closeEdit = () => setEditUser(null)
 
   const saveEdit = async (e) => {
-    e.preventDefault(); setEditSaving(true); setEditError('')
+    e.preventDefault(); setEditError('')
+    if (editForm.password && editForm.password.length < 10) { setEditError(t('users.passwordTooShort')); return }
+    setEditSaving(true)
     const res = await authFetch(`/api/users/${editUser.id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ firstName: editForm.firstName, lastName: editForm.lastName || null, roleId: editForm.roleId }),
+      body: JSON.stringify({
+        firstName: editForm.firstName,
+        lastName: editForm.lastName || null,
+        roleId: editForm.roleId,
+        ...(editForm.password ? { password: editForm.password } : {}),
+      }),
     })
     const data = await res?.json()
     if (!res?.ok) { setEditError(data?.error?.message || t('users.updateFailed')); setEditSaving(false); return }
@@ -121,7 +128,7 @@ export default function Users() {
             <input className="input" placeholder={t('users.firstName')} required value={form.firstName} onChange={e=>setForm(f=>({...f,firstName:e.target.value}))} />
             <input className="input" placeholder={t('users.lastName')}  value={form.lastName}  onChange={e=>setForm(f=>({...f,lastName:e.target.value}))} />
             <input className="input" style={{gridColumn:'span 2'}} placeholder={t('users.email')} type="email" required value={form.email} onChange={e=>setForm(f=>({...f,email:e.target.value}))} />
-            <input className="input" style={{gridColumn:'span 2'}} placeholder={t('users.passwordMin')} type="password" required minLength={8} value={form.password} onChange={e=>setForm(f=>({...f,password:e.target.value}))} />
+            <input className="input" style={{gridColumn:'span 2'}} placeholder={t('users.passwordMin')} type="password" required minLength={10} value={form.password} onChange={e=>setForm(f=>({...f,password:e.target.value}))} />
             <select className="select" style={{gridColumn:'span 2'}} required value={form.roleId} onChange={e=>setForm(f=>({...f,roleId:parseInt(e.target.value)}))}>
               <option value="">{t('users.selectRole')}</option>
               {roles.map(r => <option key={r.id} value={r.id}>{t(`common.roles.${r.name}`, r.name)}</option>)}
@@ -219,6 +226,7 @@ export default function Users() {
             <select className="select" style={{gridColumn:'span 2'}} required value={editForm.roleId} onChange={e=>setEditForm(f=>({...f,roleId:parseInt(e.target.value)}))}>
               {roles.map(r => <option key={r.id} value={r.id}>{t(`common.roles.${r.name}`, r.name)}</option>)}
             </select>
+            <input className="input" style={{gridColumn:'span 2'}} placeholder={t('users.newPasswordOptional')} type="password" minLength={10} value={editForm.password} onChange={e=>setEditForm(f=>({...f,password:e.target.value}))} />
             {editError && <div style={{...styles.errorMsg, gridColumn:'span 2'}}>{editError}</div>}
           </form>
         )}
