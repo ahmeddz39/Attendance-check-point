@@ -195,7 +195,14 @@
     "inactive": "معطل",
     "never": "أبدًا",
     "deactivate": "تعطيل",
-    "activate": "تفعيل"
+    "activate": "تفعيل",
+    "edit": "تعديل",
+    "delete": "حذف",
+    "editUser": "تعديل المستخدم",
+    "saveChanges": "حفظ التغييرات",
+    "updateFailed": "فشل تحديث المستخدم",
+    "deleteFailed": "فشل حذف المستخدم",
+    "confirmDelete": "حذف {{name}}؟ لا يمكن التراجع عن هذا الإجراء."
   },
   "devices": {
     "title": "الأجهزة",

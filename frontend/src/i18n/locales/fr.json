@@ -195,7 +195,14 @@
     "inactive": "Inactif",
     "never": "Jamais",
     "deactivate": "Désactiver",
-    "activate": "Activer"
+    "activate": "Activer",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "editUser": "Modifier l'utilisateur",
+    "saveChanges": "Enregistrer les modifications",
+    "updateFailed": "Échec de la mise à jour de l'utilisateur",
+    "deleteFailed": "Échec de la suppression de l'utilisateur",
+    "confirmDelete": "Supprimer {{name}} ? Cette action est irréversible."
   },
   "devices": {
     "title": "Appareils",

@@ -195,7 +195,14 @@
     "inactive": "Inactive",
     "never": "Never",
     "deactivate": "Deactivate",
-    "activate": "Activate"
+    "activate": "Activate",
+    "edit": "Edit",
+    "delete": "Delete",
+    "editUser": "Edit user",
+    "saveChanges": "Save changes",
+    "updateFailed": "Failed to update user",
+    "deleteFailed": "Failed to delete user",
+    "confirmDelete": "Delete {{name}}? This cannot be undone."
   },
   "devices": {
     "title": "Devices",
