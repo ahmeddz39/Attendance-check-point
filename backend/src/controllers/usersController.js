@@ -3,7 +3,7 @@ const { query } = require('../config/database');
 const { success, created, noContent, notFound, conflict, badRequest } = require('../utils/response');
 
 const USER_FIELDS = `
-  u.id, u.email, u.first_name, u.last_name, u.is_active,
+  u.id, u.username, u.first_name, u.last_name, u.is_active,
   u.last_login_at, u.created_at, r.name AS role, r.id AS role_id
 `;
 
@@ -17,7 +17,7 @@ const listUsers = async (req, res) => {
   if (role) { params.push(role); conditions.push(`r.name = $${params.length}`); }
   if (search) {
     params.push(`%${search}%`);
-    conditions.push(`(u.email ILIKE $${params.length} OR u.first_name ILIKE $${params.length} OR u.last_name ILIKE $${params.length})`);
+    conditions.push(`(u.username ILIKE $${params.length} OR u.first_name ILIKE $${params.length} OR u.last_name ILIKE $${params.length})`);
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -43,16 +43,16 @@ const getUser = async (req, res) => {
 
 // POST /api/users
 const createUser = async (req, res) => {
-  const { email, password, firstName, lastName, roleId } = req.body;
+  const { username, password, firstName, lastName, roleId } = req.body;
 
-  const existing = await query(`SELECT id FROM users WHERE email = $1`, [email.toLowerCase()]);
-  if (existing.rows.length) return conflict(res, 'Email already in use');
+  const existing = await query(`SELECT id FROM users WHERE username = $1`, [username.toLowerCase()]);
+  if (existing.rows.length) return conflict(res, 'Username already in use');
 
   const hash = await bcrypt.hash(password, 12);
   const { rows } = await query(
-    `INSERT INTO users (email, password_hash, first_name, last_name, role_id)
+    `INSERT INTO users (username, password_hash, first_name, last_name, role_id)
      VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-    [email.toLowerCase(), hash, firstName, lastName, roleId]
+    [username.toLowerCase(), hash, firstName, lastName, roleId]
   );
 
   const { rows: [user] } = await query(

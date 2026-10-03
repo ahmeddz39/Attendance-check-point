@@ -5,7 +5,7 @@ const { success, created, noContent, notFound, forbidden } = require('../utils/r
 const listReports = async (req, res) => {
   const isAdmin = req.user.role === 'admin';
   const { rows } = await query(`
-    SELECT r.*, u.email AS created_by_email
+    SELECT r.*, u.username AS created_by_username
     FROM reports r
     LEFT JOIN users u ON u.id = r.created_by
     WHERE r.is_public = TRUE OR r.created_by = $1 ${isAdmin ? 'OR TRUE' : ''}
@@ -17,7 +17,7 @@ const listReports = async (req, res) => {
 // GET /api/reports/:id
 const getReport = async (req, res) => {
   const { rows } = await query(
-    `SELECT r.*, u.email AS created_by_email FROM reports r
+    `SELECT r.*, u.username AS created_by_username FROM reports r
      LEFT JOIN users u ON u.id = r.created_by WHERE r.id = $1`,
     [req.params.id]
   );

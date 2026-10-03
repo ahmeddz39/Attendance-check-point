@@ -176,7 +176,7 @@ save them. Optional parameters if you want to pin specific values instead of gen
 ones:
 
 ```powershell
-.\deploy\setup-windows.ps1 -Port 4000 -AdminEmail admin@mycompany.com -AdminPassword 'Str0ng!Pass' -DbPassword 'Str0ng!DbPass'
+.\deploy\setup-windows.ps1 -Port 4000 -AdminUsername admin -AdminPassword 'Str0ng!Pass' -DbPassword 'Str0ng!DbPass'
 ```
 
 If PostgreSQL already existed on the machine with a superuser password set, pass it so the
@@ -241,7 +241,7 @@ On success it prints the LAN URL and the generated admin login + database passwo
 save them. Optional overrides via env vars:
 
 ```bash
-sudo DB_PASSWORD='pick-a-password' ADMIN_EMAIL='admin@mycompany.com' ADMIN_PASSWORD='Str0ng!Pass' bash deploy/setup-vm.sh
+sudo DB_PASSWORD='pick-a-password' ADMIN_USERNAME='admin' ADMIN_PASSWORD='Str0ng!Pass' bash deploy/setup-vm.sh
 ```
 
 **What it does, in order:** installs Node.js/PostgreSQL/nginx → creates the app's

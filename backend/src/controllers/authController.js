@@ -9,17 +9,17 @@ const LOCKOUT_MINUTES = 15;
 
 // POST /api/auth/login
 const login = async (req, res) => {
-  const { email, password } = req.body;
+  const { username, password } = req.body;
   try {
     const { rows } = await query(
       `SELECT u.*, r.name AS role
        FROM users u JOIN roles r ON r.id = u.role_id
-       WHERE u.email = $1 AND u.is_active = TRUE`,
-      [email.toLowerCase().trim()]
+       WHERE u.username = $1 AND u.is_active = TRUE`,
+      [username.toLowerCase().trim()]
     );
 
     const user = rows[0];
-    if (!user) return unauthorized(res, 'Invalid email or password');
+    if (!user) return unauthorized(res, 'Invalid username or password');
 
     if (user.locked_until && new Date(user.locked_until) > new Date()) {
       const minutesLeft = Math.ceil((new Date(user.locked_until) - new Date()) / 60000);
@@ -39,7 +39,7 @@ const login = async (req, res) => {
       if (lockedUntil) {
         return error(res, `Account locked due to repeated failed logins. Try again in ${LOCKOUT_MINUTES} minute(s).`, 423);
       }
-      return unauthorized(res, 'Invalid email or password');
+      return unauthorized(res, 'Invalid username or password');
     }
 
     // Tokens
@@ -67,7 +67,7 @@ const login = async (req, res) => {
       refreshToken,
       user: {
         id: user.id,
-        email: user.email,
+        username: user.username,
         firstName: user.first_name,
         lastName: user.last_name,
         role: user.role,
@@ -133,7 +133,7 @@ const logout = async (req, res) => {
 const me = async (req, res) => {
   return success(res, {
     id: req.user.id,
-    email: req.user.email,
+    username: req.user.username,
     firstName: req.user.first_name,
     lastName: req.user.last_name,
     role: req.user.role,

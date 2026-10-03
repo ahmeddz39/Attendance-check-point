@@ -63,11 +63,11 @@ export const AuthProvider = ({ children }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])
 
-  const login = async (email, password) => {
+  const login = async (username, password) => {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ username, password }),
     })
     const data = await res.json()
     if (!res.ok) throw new Error(data.error?.message || 'Login failed')

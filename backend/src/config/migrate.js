@@ -34,7 +34,7 @@ const migrate = async () => {
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
         id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-        email         VARCHAR(255) UNIQUE NOT NULL,
+        username      VARCHAR(255) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
         first_name    VARCHAR(100),
         last_name     VARCHAR(100),
@@ -46,9 +46,24 @@ const migrate = async () => {
       );
     `);
 
+    // Pre-existing installs created this column as "email" back when login
+    // required a full email address -- rename it in place so the data (and
+    // its UNIQUE constraint) carries over untouched. A no-op on fresh installs,
+    // which already get "username" straight from the CREATE TABLE above.
     await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_users_email   ON users(email);
-      CREATE INDEX IF NOT EXISTS idx_users_role_id ON users(role_id);
+      DO $$
+      BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'email')
+           AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'username') THEN
+          ALTER TABLE users RENAME COLUMN email TO username;
+        END IF;
+      END $$;
+    `);
+
+    await client.query(`
+      DROP INDEX IF EXISTS idx_users_email;
+      CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+      CREATE INDEX IF NOT EXISTS idx_users_role_id   ON users(role_id);
     `);
 
     // ── Refresh Tokens ───────────────────────────────────────────────────────

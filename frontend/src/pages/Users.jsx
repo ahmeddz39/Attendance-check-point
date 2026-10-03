@@ -18,7 +18,7 @@ export default function Users() {
   const [roles, setRoles]     = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm]       = useState({ email:'', password:'', firstName:'', lastName:'', roleId:'' })
+  const [form, setForm]       = useState({ username:'', password:'', firstName:'', lastName:'', roleId:'' })
   const [saving, setSaving]   = useState(false)
   const [error, setError]     = useState('')
   const [editUser, setEditUser] = useState(null)
@@ -57,7 +57,7 @@ export default function Users() {
     })
     const data = await res?.json()
     if (!res?.ok) { setError(data?.error?.message || t('users.createFailed')); setSaving(false); return }
-    setForm({ email:'', password:'', firstName:'', lastName:'', roleId:'' })
+    setForm({ username:'', password:'', firstName:'', lastName:'', roleId:'' })
     setShowForm(false); load(); setSaving(false)
   }
 
@@ -127,7 +127,7 @@ export default function Users() {
           <form onSubmit={submit} style={styles.formGrid}>
             <input className="input" placeholder={t('users.firstName')} required value={form.firstName} onChange={e=>setForm(f=>({...f,firstName:e.target.value}))} />
             <input className="input" placeholder={t('users.lastName')}  value={form.lastName}  onChange={e=>setForm(f=>({...f,lastName:e.target.value}))} />
-            <input className="input" style={{gridColumn:'span 2'}} placeholder={t('users.email')} type="email" required value={form.email} onChange={e=>setForm(f=>({...f,email:e.target.value}))} />
+            <input className="input" style={{gridColumn:'span 2'}} placeholder={t('users.username')} type="text" required value={form.username} onChange={e=>setForm(f=>({...f,username:e.target.value}))} />
             <input className="input" style={{gridColumn:'span 2'}} placeholder={t('users.passwordMin')} type="password" required minLength={10} value={form.password} onChange={e=>setForm(f=>({...f,password:e.target.value}))} />
             <select className="select" style={{gridColumn:'span 2'}} required value={form.roleId} onChange={e=>setForm(f=>({...f,roleId:parseInt(e.target.value)}))}>
               <option value="">{t('users.selectRole')}</option>
@@ -164,7 +164,7 @@ export default function Users() {
                         </div>
                         <div>
                           <div style={{fontWeight:500}}>{u.first_name} {u.last_name}</div>
-                          <div style={{fontSize:12, color:'var(--muted)'}}>{u.email}</div>
+                          <div style={{fontSize:12, color:'var(--muted)'}}>{u.username}</div>
                         </div>
                       </div>
                     </td>
@@ -209,7 +209,7 @@ export default function Users() {
         open={!!editUser}
         onClose={closeEdit}
         title={t('users.editUser')}
-        subtitle={editUser?.email}
+        subtitle={editUser?.username}
         footer={
           <>
             <button type="button" onClick={closeEdit} className="btn btn-ghost">{t('users.cancel')}</button>

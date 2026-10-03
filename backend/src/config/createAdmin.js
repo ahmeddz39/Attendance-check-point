@@ -3,12 +3,12 @@ const bcrypt = require('bcryptjs');
 const { pool } = require('./database');
 
 const createAdmin = async () => {
-  const email = process.env.ADMIN_EMAIL || process.argv[2];
+  const username = process.env.ADMIN_USERNAME || process.argv[2];
   const password = process.env.ADMIN_PASSWORD || process.argv[3];
 
-  if (!email || !password) {
-    console.error('Usage: ADMIN_EMAIL=... ADMIN_PASSWORD=... npm run db:create-admin');
-    console.error('   or: npm run db:create-admin -- admin@company.com StrongPassword!');
+  if (!username || !password) {
+    console.error('Usage: ADMIN_USERNAME=... ADMIN_PASSWORD=... npm run db:create-admin');
+    console.error('   or: npm run db:create-admin -- admin StrongPassword!');
     process.exit(1);
   }
 
@@ -21,12 +21,12 @@ const createAdmin = async () => {
 
     const passwordHash = await bcrypt.hash(password, 12);
     await client.query(`
-      INSERT INTO users (email, password_hash, first_name, last_name, role_id)
+      INSERT INTO users (username, password_hash, first_name, last_name, role_id)
       VALUES ($1, $2, 'Admin', 'User', $3)
-      ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash
-    `, [email.toLowerCase().trim(), passwordHash, adminRole.id]);
+      ON CONFLICT (username) DO UPDATE SET password_hash = EXCLUDED.password_hash
+    `, [username.toLowerCase().trim(), passwordHash, adminRole.id]);
 
-    console.log(`✅ Admin account ready: ${email}`);
+    console.log(`✅ Admin account ready: ${username}`);
   } finally {
     client.release();
     await pool.end();

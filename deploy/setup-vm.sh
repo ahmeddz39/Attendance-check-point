@@ -18,7 +18,7 @@
 # explicitly pass ADMIN_PASSWORD.
 #
 # Everything is generated automatically if not supplied via env vars:
-#   DB_PASSWORD, ADMIN_EMAIL, ADMIN_PASSWORD
+#   DB_PASSWORD, ADMIN_USERNAME, ADMIN_PASSWORD
 # Generated secrets/passwords are printed once at the end -- save them then.
 
 set -euo pipefail
@@ -27,7 +27,7 @@ APP_DIR="/opt/attendance-check-point"
 APP_USER="attendance"
 DB_NAME="${DB_NAME:-attendance_db}"
 DB_USER="${DB_USER:-attendance_user}"
-ADMIN_EMAIL="${ADMIN_EMAIL:-admin@company.local}"
+ADMIN_USERNAME="${ADMIN_USERNAME:-admin}"
 
 step() { echo -e "\n==> $*"; }
 info() { echo "    $*"; }
@@ -99,7 +99,7 @@ npm run db:migrate
 step "Creating the first admin account (safe to re-run -- updates the password if ADMIN_PASSWORD is set)"
 if [ "$FIRST_RUN" = "1" ] || [ -n "${ADMIN_PASSWORD:-}" ]; then
   ADMIN_PASSWORD="${ADMIN_PASSWORD:-$(random_password)}"
-  ADMIN_EMAIL="$ADMIN_EMAIL" ADMIN_PASSWORD="$ADMIN_PASSWORD" npm run db:create-admin
+  ADMIN_USERNAME="$ADMIN_USERNAME" ADMIN_PASSWORD="$ADMIN_PASSWORD" npm run db:create-admin
 else
   info "Admin account already provisioned from a previous run -- pass ADMIN_PASSWORD=... to reset it."
 fi
@@ -136,7 +136,7 @@ echo "================================================================"
 [ -n "$LAN_IP" ] && echo " URL: http://$LAN_IP/"
 echo ""
 echo " Admin login:"
-echo "   Email:    $ADMIN_EMAIL"
+echo "   Username: $ADMIN_USERNAME"
 if [ -n "${ADMIN_PASSWORD:-}" ]; then
   echo "   Password: $ADMIN_PASSWORD"
 else

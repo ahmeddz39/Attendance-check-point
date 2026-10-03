@@ -30,14 +30,14 @@
 .PARAMETER DbName / DbUser / DbPassword
   Postgres database/role to create. DbPassword is auto-generated if omitted.
 
-.PARAMETER AdminEmail / AdminPassword
+.PARAMETER AdminUsername / AdminPassword
   First login account. AdminPassword is auto-generated if omitted.
   If both the account and .env already exist from a previous run, this
   step is skipped (re-run is a no-op for identity, not a reset).
 
 .EXAMPLE
   .\deploy\setup-windows.ps1
-  .\deploy\setup-windows.ps1 -AdminEmail admin@mycompany.com -Port 4000
+  .\deploy\setup-windows.ps1 -AdminUsername admin -Port 4000
 #>
 
 [CmdletBinding()]
@@ -46,7 +46,7 @@ param(
   [string]$DbName = 'attendance_db',
   [string]$DbUser = 'attendance_user',
   [string]$DbPassword,
-  [string]$AdminEmail = 'admin@company.local',
+  [string]$AdminUsername = 'admin',
   [string]$AdminPassword,
   # Only needed if your PostgreSQL install requires a password for the
   # 'postgres' superuser to create the app's role/database (a freshly
@@ -235,10 +235,10 @@ if (-not $existingRule) {
 # ── 9. First admin account ────────────────────────────────────────────────────
 Write-Step "Creating the first admin account (safe to re-run -- updates the password if the account already exists)"
 if (-not $AdminPassword) { $AdminPassword = New-RandomPassword }
-$env:ADMIN_EMAIL = $AdminEmail
+$env:ADMIN_USERNAME = $AdminUsername
 $env:ADMIN_PASSWORD = $AdminPassword
 npm run db:create-admin
-Remove-Item Env:\ADMIN_EMAIL, Env:\ADMIN_PASSWORD -ErrorAction SilentlyContinue
+Remove-Item Env:\ADMIN_USERNAME, Env:\ADMIN_PASSWORD -ErrorAction SilentlyContinue
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 $lanIp = (Get-NetIPAddress -AddressFamily IPv4 |
@@ -256,7 +256,7 @@ Write-Host " Local:  http://localhost:$Port"
 if ($lanIp) { Write-Host " LAN:    http://${lanIp}:$Port" }
 Write-Host ""
 Write-Host " Admin login:"
-Write-Host "   Email:    $AdminEmail"
+Write-Host "   Username: $AdminUsername"
 Write-Host "   Password: $AdminPassword"
 Write-Host ""
 if ($firstRun) {

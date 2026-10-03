@@ -14,7 +14,7 @@ const authenticate = async (req, res, next) => {
     const decoded = verifyAccessToken(token);
 
     const { rows } = await query(
-      `SELECT u.id, u.email, u.first_name, u.last_name, u.is_active,
+      `SELECT u.id, u.username, u.first_name, u.last_name, u.is_active,
               r.name AS role, r.id AS role_id
        FROM users u
        JOIN roles r ON r.id = u.role_id

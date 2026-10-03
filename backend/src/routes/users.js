@@ -22,7 +22,7 @@ router.get('/:id',
 
 router.post('/',
   authorize('admin'),
-  body('email').isEmail().normalizeEmail(),
+  body('username').trim().isLength({ min: 3 }).matches(/^[a-zA-Z0-9_.-]+$/),
   body('password').isLength({ min: 10 }),
   body('roleId').isInt(),
   validateRequest,

@@ -28,7 +28,7 @@ export default function Login() {
   const { login } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const navigate  = useNavigate()
-  const [email, setEmail]       = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError]       = useState('')
   const [scanState, setScanState] = useState('idle') // idle | scanning | success | error
@@ -39,7 +39,7 @@ export default function Login() {
     setError('')
     setScanState('scanning')
     try {
-      await Promise.all([login(email, password), wait(MIN_SCAN_MS)])
+      await Promise.all([login(username, password), wait(MIN_SCAN_MS)])
       setScanState('success')
       await wait(500)
       navigate('/')
@@ -90,12 +90,13 @@ export default function Login() {
         <div style={styles.formShell}>
           <form onSubmit={handleSubmit} style={styles.form}>
             <div style={styles.field}>
-              <label style={styles.label}>{t('login.email')}</label>
+              <label style={styles.label}>{t('login.username')}</label>
               <input
                 className="input"
-                type="email" value={email} required autoFocus disabled={busy}
-                onChange={e => setEmail(e.target.value)}
-                placeholder={t('login.emailPlaceholder')}
+                type="text" value={username} required autoFocus disabled={busy}
+                autoComplete="username"
+                onChange={e => setUsername(e.target.value)}
+                placeholder={t('login.usernamePlaceholder')}
               />
             </div>
             <div style={styles.field}>
