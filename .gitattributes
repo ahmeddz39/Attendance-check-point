@@ -1,0 +1,7 @@
+# Shell scripts and env templates run on Linux (deploy/*.sh are executed on
+# the target VM, .env.example is `source`d by backup-db.sh) -- force LF
+# regardless of a contributor's local core.autocrlf, since `git archive`
+# (the project's own documented way to hand code to a deployment target)
+# otherwise bakes in CRLF and breaks bash with "$'\r': command not found".
+*.sh text eol=lf
+.env.example text eol=lf
