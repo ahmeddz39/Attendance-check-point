@@ -131,20 +131,17 @@ export default function Layout() {
           </div>
 
           <div style={styles.sideBottom}>
-            <button
-              type="button"
-              onClick={() => setShowPasswordModal(true)}
-              style={{ ...styles.userCard, justifyContent: collapsed ? 'center' : 'flex-start', padding: collapsed ? '10px 0' : '10px 12px', cursor: 'pointer' }}
-              title={t('account.changePassword')}
-            >
+            <div style={{ ...styles.userCard, justifyContent: collapsed ? 'center' : 'flex-start', padding: collapsed ? '10px 0' : '10px 12px' }}>
               <div style={styles.avatar} title={`${user?.firstName || ''} ${user?.lastName || ''}`}>{user?.firstName?.[0]}{user?.lastName?.[0]}</div>
               {!collapsed && (
-                <div style={{flex:1, minWidth:0, textAlign: 'start'}}>
+                <div style={{flex:1, minWidth:0}}>
                   <div style={styles.userName}>{user?.firstName} {user?.lastName}</div>
                   <div style={{...styles.roleTag, color: roleColor[user?.role]}}>{t(`common.roles.${user?.role}`, user?.role)}</div>
                 </div>
               )}
-              {!collapsed && <KeyRound size={14} color="var(--muted)" />}
+            </div>
+            <button className="btn btn-ghost" style={styles.logoutBtn} onClick={() => setShowPasswordModal(true)} title={t('account.changePassword')}>
+              <KeyRound size={15} /> {!collapsed && t('account.changePassword')}
             </button>
             <button className="btn btn-ghost" style={styles.logoutBtn} onClick={handleLogout} title={t('nav.signOut')}>
               <LogOut size={15} /> {!collapsed && t('nav.signOut')}
