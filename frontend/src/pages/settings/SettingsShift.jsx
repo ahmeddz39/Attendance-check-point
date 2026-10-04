@@ -10,7 +10,7 @@ const today = () => new Date().toISOString().slice(0, 10)
 
 export default function SettingsShift() {
   const { t, i18n } = useTranslation()
-  const { authFetch, user } = useAuth()
+  const { authFetch } = useAuth()
 
   const [settingsForm, setSettingsForm] = useState(null)
   const [savingSettings, setSavingSettings] = useState(false)
@@ -93,39 +93,30 @@ export default function SettingsShift() {
         <form onSubmit={saveSettings} style={styles.settingsGrid}>
           <SettingField label={t('reports.shiftStart')}>
             <input className="input" type="time" value={settingsForm.shiftStart}
-              disabled={user?.role !== 'admin'}
               onChange={e => setSettingsForm(f => ({ ...f, shiftStart: e.target.value }))} />
           </SettingField>
           <SettingField label={t('reports.shiftEnd')}>
             <input className="input" type="time" value={settingsForm.shiftEnd}
-              disabled={user?.role !== 'admin'}
               onChange={e => setSettingsForm(f => ({ ...f, shiftEnd: e.target.value }))} />
           </SettingField>
           <SettingField label={t('reports.gracePeriod')}>
             <input className="input" type="number" min={0} value={settingsForm.graceMinutes}
-              disabled={user?.role !== 'admin'}
               onChange={e => setSettingsForm(f => ({ ...f, graceMinutes: Number(e.target.value || 0) }))} />
           </SettingField>
           <SettingField label={t('reports.overtimeThreshold')}>
             <input className="input" type="number" min={0} step="0.5" value={settingsForm.overtimeDailyThresholdHours}
-              disabled={user?.role !== 'admin'}
               onChange={e => setSettingsForm(f => ({ ...f, overtimeDailyThresholdHours: Number(e.target.value || 0) }))} />
           </SettingField>
           <SettingField label={t('reports.overtimeMultiplier')}>
             <input className="input" type="number" min={1} step="0.1" value={settingsForm.overtimeMultiplier}
-              disabled={user?.role !== 'admin'}
               onChange={e => setSettingsForm(f => ({ ...f, overtimeMultiplier: Number(e.target.value || 0) }))} />
           </SettingField>
-          {user?.role === 'admin' ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <button type="submit" className="btn btn-primary" disabled={savingSettings}>
-                {savingSettings ? t('reports.savingEllipsis') : t('reports.saveShiftSettings')}
-              </button>
-              {settingsMessage && <span style={{ fontSize: 12, color: 'var(--muted)' }}>{settingsMessage}</span>}
-            </div>
-          ) : (
-            <p style={{ fontSize: 12, color: 'var(--muted)' }}>{t('reports.adminOnlyNotice')}</p>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button type="submit" className="btn btn-primary" disabled={savingSettings}>
+              {savingSettings ? t('reports.savingEllipsis') : t('reports.saveShiftSettings')}
+            </button>
+            {settingsMessage && <span style={{ fontSize: 12, color: 'var(--muted)' }}>{settingsMessage}</span>}
+          </div>
         </form>
       </section>
 

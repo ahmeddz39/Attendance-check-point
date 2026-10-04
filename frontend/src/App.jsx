@@ -28,6 +28,18 @@ const Private = ({ children, roles }) => {
   return children
 }
 
+// The Settings index route used to be hard-gated to admin (via <Private>,
+// which redirects to "/" on a role mismatch) -- since "/settings" itself
+// renders this index route too, an analyst clicking the Settings nav link
+// got bounced straight back out before ever seeing the tabs they DO have
+// access to (Shift & Holidays, Appearance, Language). Send them to the
+// first tab they can use instead of booting them out of Settings entirely.
+const SettingsIndex = () => {
+  const { user } = useAuth()
+  if (user?.role === 'admin') return <SettingsGeneral />
+  return <Navigate to="/settings/shift" replace />
+}
+
 // Blocks the app shell behind an active license -- an admin can still log in
 // (that route lives outside this gate) to reach the activation screen.
 const LicenseGate = ({ children }) => {
@@ -62,9 +74,9 @@ export default function App() {
           <Route path="salary"    element={<Private roles={['admin']}><Salary /></Private>} />
           <Route path="leave"     element={<Private roles={['admin','analyst']}><Leave /></Private>} />
           <Route path="settings" element={<Private roles={['admin','analyst']}><Settings /></Private>}>
-            <Route index          element={<Private roles={['admin']}><SettingsGeneral /></Private>} />
-            <Route path="users"      element={<Private roles={['admin','analyst']}><Users /></Private>} />
-            <Route path="devices"    element={<Private roles={['admin','analyst']}><Devices /></Private>} />
+            <Route index          element={<SettingsIndex />} />
+            <Route path="users"      element={<Private roles={['admin']}><Users /></Private>} />
+            <Route path="devices"    element={<Private roles={['admin']}><Devices /></Private>} />
             <Route path="shift"      element={<Private roles={['admin','analyst']}><SettingsShift /></Private>} />
             <Route path="appearance" element={<SettingsAppearance />} />
             <Route path="language"   element={<SettingsLanguage />} />

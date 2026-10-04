@@ -20,7 +20,11 @@ const getSettings = async (req, res) => {
 };
 
 const updateSettings = async (req, res) => {
-  const { shiftStart, shiftEnd, graceMinutes, overtimeDailyThresholdHours, overtimeMultiplier, companyName } = req.body;
+  // Shift/overtime fields are shared with analysts (the "Shift & Holidays" tab);
+  // company_name is only ever shown on the admin-only General tab, so an
+  // analyst's request silently can't touch it even if crafted by hand.
+  const { shiftStart, shiftEnd, graceMinutes, overtimeDailyThresholdHours, overtimeMultiplier } = req.body;
+  const companyName = req.user.role === 'admin' ? req.body.companyName : undefined;
 
   const { rows } = await query(`
     UPDATE company_settings SET

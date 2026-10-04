@@ -25,7 +25,7 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/', authorize('admin', 'analyst'), asyncHandler(getSettings));
-router.patch('/', authorize('admin'), asyncHandler(updateSettings));
+router.patch('/', authorize('admin', 'analyst'), asyncHandler(updateSettings));
 router.post('/logo', authorize('admin'), upload.single('logo'), asyncHandler(uploadLogo));
 router.delete('/logo', authorize('admin'), asyncHandler(removeLogo));
 

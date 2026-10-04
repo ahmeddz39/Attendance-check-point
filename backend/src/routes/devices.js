@@ -17,12 +17,17 @@ const {
 
 const router = Router();
 router.use(authenticate);
-router.use(authorize('admin', 'analyst'));
 
-router.get('/', asyncHandler(listDevices));
-router.get('/discover', asyncHandler(discover));
+// The plain device list is shared well beyond the Devices management page
+// (Attendance's device filter, Employees' primary-device picker, the
+// Dashboard's online count) so it stays open to analysts; everything that
+// actually manages a device is admin-only, matching the Devices settings
+// tab being admin-only in the UI.
+router.get('/', authorize('admin', 'analyst'), asyncHandler(listDevices));
+router.get('/discover', authorize('admin'), asyncHandler(discover));
 
 router.post('/',
+  authorize('admin'),
   body('name').notEmpty().isString(),
   body('ipAddress').isIP(),
   body('port').optional().isInt({ min: 1, max: 65535 }),
@@ -32,6 +37,7 @@ router.post('/',
 );
 
 router.patch('/:id',
+  authorize('admin'),
   param('id').isUUID(),
   body('ipAddress').optional().isIP(),
   body('port').optional().isInt({ min: 1, max: 65535 }),
@@ -41,14 +47,15 @@ router.patch('/:id',
 );
 
 router.delete('/:id',
+  authorize('admin'),
   param('id').isUUID(),
   validateRequest,
   audit('device.delete', 'attendance_devices'),
   asyncHandler(deleteDevice)
 );
 
-router.post('/:id/connect', param('id').isUUID(), validateRequest, asyncHandler(connectDevice));
-router.post('/:id/sync-users', param('id').isUUID(), validateRequest, asyncHandler(syncDeviceUsers));
-router.post('/:id/sync-logs', param('id').isUUID(), validateRequest, asyncHandler(syncDeviceLogs));
+router.post('/:id/connect', authorize('admin'), param('id').isUUID(), validateRequest, asyncHandler(connectDevice));
+router.post('/:id/sync-users', authorize('admin'), param('id').isUUID(), validateRequest, asyncHandler(syncDeviceUsers));
+router.post('/:id/sync-logs', authorize('admin'), param('id').isUUID(), validateRequest, asyncHandler(syncDeviceLogs));
 
 module.exports = router;

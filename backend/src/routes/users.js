@@ -9,12 +9,12 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/',
-  authorize('admin', 'analyst'),
+  authorize('admin'),
   listUsers
 );
 
 router.get('/:id',
-  authorize('admin', 'analyst'),
+  authorize('admin'),
   param('id').isUUID(),
   validateRequest,
   getUser

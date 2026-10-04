@@ -9,8 +9,8 @@ export default function Settings() {
 
   const tabs = [
     { to: '/settings',           end: true, label: t('settings.tabGeneral'),  roles: ['admin'] },
-    { to: '/settings/users',     label: t('settings.tabUsers'),      roles: ['admin', 'analyst'] },
-    { to: '/settings/devices',   label: t('settings.tabDevices'),    roles: ['admin', 'analyst'] },
+    { to: '/settings/users',     label: t('settings.tabUsers'),      roles: ['admin'] },
+    { to: '/settings/devices',   label: t('settings.tabDevices'),    roles: ['admin'] },
     { to: '/settings/shift',     label: t('settings.tabShift'),      roles: ['admin', 'analyst'] },
     { to: '/settings/appearance', label: t('settings.tabAppearance') },
     { to: '/settings/language',  label: t('settings.tabLanguage') },
