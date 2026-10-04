@@ -140,4 +140,23 @@ const me = async (req, res) => {
   });
 };
 
-module.exports = { login, refresh, logout, me };
+// POST /api/auth/change-password
+const changePassword = async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+
+  const { rows } = await query(`SELECT password_hash FROM users WHERE id = $1`, [req.user.id]);
+  if (!rows.length) return unauthorized(res);
+
+  const valid = await bcrypt.compare(currentPassword, rows[0].password_hash);
+  if (!valid) return unauthorized(res, 'Current password is incorrect');
+
+  const hash = await bcrypt.hash(newPassword, 12);
+  await query(`UPDATE users SET password_hash = $1 WHERE id = $2`, [hash, req.user.id]);
+
+  // Changing your password signs you out everywhere, same as an admin reset.
+  await query(`DELETE FROM refresh_tokens WHERE user_id = $1`, [req.user.id]);
+
+  return success(res, { message: 'Password changed' });
+};
+
+module.exports = { login, refresh, logout, me, changePassword };

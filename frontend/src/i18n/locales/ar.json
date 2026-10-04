@@ -58,6 +58,18 @@
     "hideSidebar": "إخفاء اللوحة الجانبية",
     "showSidebar": "إظهار اللوحة الجانبية"
   },
+  "account": {
+    "changePassword": "تغيير كلمة المرور",
+    "changePasswordSubtitle": "سيتم تسجيل خروجك من كل مكان بعد تغييرها.",
+    "currentPassword": "كلمة المرور الحالية",
+    "newPassword": "كلمة المرور الجديدة (10 أحرف على الأقل)",
+    "confirmPassword": "تأكيد كلمة المرور الجديدة",
+    "passwordMismatch": "كلمتا المرور غير متطابقتين",
+    "passwordTooShort": "يجب أن تتكون كلمة المرور من 10 أحرف على الأقل",
+    "changeFailed": "فشل تغيير كلمة المرور",
+    "changeSuccess": "تم تغيير كلمة المرور. جاري تسجيل الخروج…",
+    "changing": "جارٍ التغيير…"
+  },
   "dashboard": {
     "greetingMorning": "صباح الخير، {{name}} 👋",
     "greetingAfternoon": "مساء الخير، {{name}} 👋",

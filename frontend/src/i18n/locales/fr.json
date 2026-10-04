@@ -58,6 +58,18 @@
     "hideSidebar": "Masquer le panneau",
     "showSidebar": "Afficher le panneau"
   },
+  "account": {
+    "changePassword": "Changer le mot de passe",
+    "changePasswordSubtitle": "Vous serez déconnecté partout une fois le changement effectué.",
+    "currentPassword": "Mot de passe actuel",
+    "newPassword": "Nouveau mot de passe (10 caractères min.)",
+    "confirmPassword": "Confirmer le nouveau mot de passe",
+    "passwordMismatch": "Les mots de passe ne correspondent pas",
+    "passwordTooShort": "Le mot de passe doit contenir au moins 10 caractères",
+    "changeFailed": "Échec du changement de mot de passe",
+    "changeSuccess": "Mot de passe modifié. Déconnexion en cours…",
+    "changing": "Modification…"
+  },
   "dashboard": {
     "greetingMorning": "Bonjour, {{name}} 👋",
     "greetingAfternoon": "Bonjour, {{name}} 👋",

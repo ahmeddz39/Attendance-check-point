@@ -3,7 +3,8 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
 import { useCompany } from '../context/CompanyContext'
-import { LayoutDashboard, BarChart2, FileText, Users, LogOut, CheckSquare, Router, Clock, WalletCards, Palmtree, Settings as SettingsIcon, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen } from 'lucide-react'
+import { LayoutDashboard, BarChart2, FileText, Users, LogOut, CheckSquare, Router, Clock, WalletCards, Palmtree, Settings as SettingsIcon, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, KeyRound } from 'lucide-react'
+import Modal from './Modal'
 
 const NARROW_QUERY = '(max-width: 900px)'
 
@@ -29,11 +30,16 @@ const nav = [
 
 export default function Layout() {
   const { t, i18n } = useTranslation()
-  const { user, logout } = useAuth()
+  const { user, logout, authFetch } = useAuth()
   const { companyName, logoUrl } = useCompany()
   const navigate = useNavigate()
   const [manualCollapsed, setManualCollapsed] = useState(getStoredCollapsed)
   const [isNarrow, setIsNarrow] = useState(matchesNarrow)
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
+  const [passwordSaving, setPasswordSaving] = useState(false)
+  const [passwordError, setPasswordError] = useState('')
+  const [passwordSuccess, setPasswordSuccess] = useState(false)
 
   const collapsed = manualCollapsed !== null ? manualCollapsed : isNarrow
 
@@ -55,6 +61,37 @@ export default function Layout() {
   }
 
   const handleLogout = async () => { await logout(); navigate('/login') }
+
+  const closePasswordModal = () => {
+    setShowPasswordModal(false)
+    setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
+    setPasswordError('')
+    setPasswordSuccess(false)
+  }
+
+  const submitPasswordChange = async (e) => {
+    e.preventDefault()
+    setPasswordError('')
+    if (passwordForm.newPassword.length < 10) { setPasswordError(t('account.passwordTooShort')); return }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) { setPasswordError(t('account.passwordMismatch')); return }
+
+    setPasswordSaving(true)
+    const res = await authFetch('/api/auth/change-password', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentPassword: passwordForm.currentPassword, newPassword: passwordForm.newPassword }),
+    })
+    const data = await res?.json().catch(() => ({}))
+    if (!res?.ok) {
+      setPasswordError(data?.error?.message || t('account.changeFailed'))
+      setPasswordSaving(false)
+      return
+    }
+    setPasswordSuccess(true)
+    setTimeout(async () => {
+      await logout()
+      navigate('/login')
+    }, 1800)
+  }
 
   const roleColor = { admin: 'var(--accent)', analyst: 'var(--accent2)', viewer: 'var(--warn)' }
 
@@ -94,15 +131,21 @@ export default function Layout() {
           </div>
 
           <div style={styles.sideBottom}>
-            <div style={{ ...styles.userCard, justifyContent: collapsed ? 'center' : 'flex-start', padding: collapsed ? '10px 0' : '10px 12px' }}>
+            <button
+              type="button"
+              onClick={() => setShowPasswordModal(true)}
+              style={{ ...styles.userCard, justifyContent: collapsed ? 'center' : 'flex-start', padding: collapsed ? '10px 0' : '10px 12px', cursor: 'pointer' }}
+              title={t('account.changePassword')}
+            >
               <div style={styles.avatar} title={`${user?.firstName || ''} ${user?.lastName || ''}`}>{user?.firstName?.[0]}{user?.lastName?.[0]}</div>
               {!collapsed && (
-                <div style={{flex:1, minWidth:0}}>
+                <div style={{flex:1, minWidth:0, textAlign: 'start'}}>
                   <div style={styles.userName}>{user?.firstName} {user?.lastName}</div>
                   <div style={{...styles.roleTag, color: roleColor[user?.role]}}>{t(`common.roles.${user?.role}`, user?.role)}</div>
                 </div>
               )}
-            </div>
+              {!collapsed && <KeyRound size={14} color="var(--muted)" />}
+            </button>
             <button className="btn btn-ghost" style={styles.logoutBtn} onClick={handleLogout} title={t('nav.signOut')}>
               <LogOut size={15} /> {!collapsed && t('nav.signOut')}
             </button>
@@ -114,6 +157,47 @@ export default function Layout() {
       <main className="app-main">
         <Outlet />
       </main>
+
+      <Modal
+        open={showPasswordModal}
+        onClose={closePasswordModal}
+        title={t('account.changePassword')}
+        subtitle={passwordSuccess ? null : t('account.changePasswordSubtitle')}
+        footer={passwordSuccess ? null : (
+          <>
+            <button type="button" onClick={closePasswordModal} className="btn btn-ghost">{t('common.cancel')}</button>
+            <button type="submit" form="change-password-form" className="btn btn-primary" disabled={passwordSaving}>
+              {passwordSaving ? t('account.changing') : t('account.changePassword')}
+            </button>
+          </>
+        )}
+      >
+        {passwordSuccess ? (
+          <div style={styles.successMsg}>{t('account.changeSuccess')}</div>
+        ) : (
+          <form id="change-password-form" onSubmit={submitPasswordChange} style={styles.passwordForm}>
+            <input
+              className="input" type="password" required autoFocus
+              placeholder={t('account.currentPassword')}
+              value={passwordForm.currentPassword}
+              onChange={e => setPasswordForm(f => ({ ...f, currentPassword: e.target.value }))}
+            />
+            <input
+              className="input" type="password" required minLength={10}
+              placeholder={t('account.newPassword')}
+              value={passwordForm.newPassword}
+              onChange={e => setPasswordForm(f => ({ ...f, newPassword: e.target.value }))}
+            />
+            <input
+              className="input" type="password" required minLength={10}
+              placeholder={t('account.confirmPassword')}
+              value={passwordForm.confirmPassword}
+              onChange={e => setPasswordForm(f => ({ ...f, confirmPassword: e.target.value }))}
+            />
+            {passwordError && <div style={styles.errorMsg}>{passwordError}</div>}
+          </form>
+        )}
+      </Modal>
     </div>
   )
 }
@@ -152,4 +236,7 @@ const styles = {
   userName: { fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   roleTag:  { fontSize: 11, fontFamily: 'var(--mono)', marginTop: 1 },
   logoutBtn: { width: '100%', justifyContent: 'center' },
+  passwordForm: { display: 'flex', flexDirection: 'column', gap: 10 },
+  errorMsg: { color: 'var(--danger)', fontSize: 13 },
+  successMsg: { color: 'var(--accent)', fontSize: 14, padding: '8px 0' },
 }

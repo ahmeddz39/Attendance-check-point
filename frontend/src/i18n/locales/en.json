@@ -58,6 +58,18 @@
     "hideSidebar": "Hide sidebar",
     "showSidebar": "Show sidebar"
   },
+  "account": {
+    "changePassword": "Change password",
+    "changePasswordSubtitle": "You'll be signed out everywhere once it's changed.",
+    "currentPassword": "Current password",
+    "newPassword": "New password (min 10 chars)",
+    "confirmPassword": "Confirm new password",
+    "passwordMismatch": "Passwords don't match",
+    "passwordTooShort": "Password must be at least 10 characters",
+    "changeFailed": "Failed to change password",
+    "changeSuccess": "Password changed. Signing you out…",
+    "changing": "Changing…"
+  },
   "dashboard": {
     "greetingMorning": "Good morning, {{name}} 👋",
     "greetingAfternoon": "Good afternoon, {{name}} 👋",
