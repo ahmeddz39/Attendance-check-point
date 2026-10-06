@@ -194,9 +194,21 @@ export default function Employees() {
       })
     }
 
+    let pushMessage = ''
+    if (savedEmployeeId && isAdmin && form.primaryDeviceId && form.deviceUserId) {
+      const pushRes = await authFetch(`/api/employees/${savedEmployeeId}/push-to-device`, { method: 'POST' })
+      const pushData = await pushRes?.json().catch(() => ({}))
+      pushMessage = !pushRes?.ok
+        ? (pushData?.error?.message || t('employees.devicePushFailed'))
+        : pushData?.data?.devicePush?.autoAssigned
+          ? t('employees.devicePushedAutoUid', { uid: pushData.data.devicePush.deviceUid })
+          : t('employees.devicePushed')
+    }
+
     setMessage('')
     reset()
     load()
+    if (pushMessage) setMessage(pushMessage)
   }
 
   const remove = async (id) => {

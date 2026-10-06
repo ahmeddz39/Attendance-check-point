@@ -6,7 +6,7 @@ const { asyncHandler } = require('../middleware/asyncHandler');
 const { audit } = require('../middleware/audit');
 const {
   listEmployees, createEmployee, updateEmployee, deleteEmployee,
-  getEmployeeShifts, updateEmployeeShifts,
+  getEmployeeShifts, updateEmployeeShifts, pushEmployeeDevice,
 } = require('../controllers/employeesController');
 
 const router = Router();
@@ -20,6 +20,9 @@ router.post('/',
   body('firstName').notEmpty(),
   body('salaryType').optional().isIn(['hourly', 'monthly']),
   body('leaveBalanceAdjustment').optional().isFloat(),
+  body('deviceUid').optional().isInt({ min: 1, max: 3000 }),
+  body('deviceUserId').optional().isString().isLength({ max: 9 }),
+  body('cardNumber').optional().isString().isLength({ max: 10 }),
   validateRequest,
   audit('employee.create', 'employees'),
   asyncHandler(createEmployee)
@@ -29,6 +32,9 @@ router.patch('/:id',
   param('id').isUUID(),
   body('salaryType').optional().isIn(['hourly', 'monthly']),
   body('leaveBalanceAdjustment').optional().isFloat(),
+  body('deviceUid').optional().isInt({ min: 1, max: 3000 }),
+  body('deviceUserId').optional().isString().isLength({ max: 9 }),
+  body('cardNumber').optional().isString().isLength({ max: 10 }),
   validateRequest,
   audit('employee.update', 'employees'),
   asyncHandler(updateEmployee)
@@ -48,6 +54,14 @@ router.put('/:id/shifts',
   validateRequest,
   audit('employee.shifts.update', 'employees'),
   asyncHandler(updateEmployeeShifts)
+);
+
+router.post('/:id/push-to-device',
+  authorize('admin'),
+  param('id').isUUID(),
+  validateRequest,
+  audit('employee.device.push', 'employees'),
+  asyncHandler(pushEmployeeDevice)
 );
 
 module.exports = router;

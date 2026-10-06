@@ -80,4 +80,41 @@ const fetchLogs = async (device) => {
   return logs.map(normalizeAttendanceLog).filter((log) => log.deviceUserId);
 };
 
-module.exports = { fetchUsers, fetchLogs };
+// zklib-js's setUser() has two quirks it does not surface as errors:
+// - its own validation (uid range, userid/name length) returns `false` instead of throwing
+// - on a hardware write failure it logs and resolves `undefined` instead of rejecting
+// So any `false`/`undefined`/`null` result here must be treated as a failure ourselves.
+const pushUser = async (device, user) => {
+  const uid = Number(user.deviceUid);
+  const userid = String(user.deviceUserId || '').trim();
+  const name = String(user.name || '').trim().slice(0, 24);
+  const password = ''; // no device_password column; this deployment authenticates by fingerprint/face, not PIN
+  const role = Number(user.deviceRole || 0);
+  const cardno = Number(user.cardNumber || 0);
+
+  if (!Number.isInteger(uid) || uid < 1 || uid > 3000) {
+    throw new DeviceProtocolError(`Device UID must be an integer between 1 and 3000 (got "${user.deviceUid}").`);
+  }
+  if (!userid || userid.length > 9) {
+    throw new DeviceProtocolError('Device user ID (PIN) is required and must be 9 characters or fewer.');
+  }
+  if (!name) {
+    throw new DeviceProtocolError('Employee name is required to push to the device.');
+  }
+
+  const result = await withDevice(device, async (zk) => {
+    // setUser() only wires up a tcpCallback; on a UDP-fallback connection it throws a
+    // confusing low-level TypeError instead of failing cleanly, so pre-empt that here.
+    if (zk.connectionType !== 'tcp') {
+      throw new Error('writing a user record requires a TCP connection; this device is reachable only over UDP.');
+    }
+    return zk.setUser(uid, userid, name, password, role, cardno);
+  });
+
+  if (result === false || result == null) {
+    throw new DeviceProtocolError(`Device ${device.name} rejected the user record for UID ${uid}.`);
+  }
+  return { deviceUid: uid };
+};
+
+module.exports = { fetchUsers, fetchLogs, pushUser };

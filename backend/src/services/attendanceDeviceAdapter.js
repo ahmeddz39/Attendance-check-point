@@ -6,9 +6,11 @@ const { getAdapter, DeviceProtocolError } = require('./deviceAdapters');
 
 const fetchDeviceUsers = (device) => getAdapter(device.protocol).fetchUsers(device);
 const fetchAttendanceLogs = (device) => getAdapter(device.protocol).fetchLogs(device);
+const pushDeviceUser = (device, user) => getAdapter(device.protocol).pushUser(device, user);
 
 module.exports = {
   DeviceProtocolError,
   fetchDeviceUsers,
   fetchAttendanceLogs,
+  pushDeviceUser,
 };

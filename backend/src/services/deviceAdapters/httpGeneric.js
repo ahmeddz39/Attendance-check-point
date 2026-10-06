@@ -145,4 +145,11 @@ const fetchLogs = async (device) => {
     .filter((log) => log.deviceUserId);
 };
 
-module.exports = { fetchUsers, fetchLogs };
+// Writing a user record is vendor-specific (e.g. ISAPI expects a multipart body,
+// not a plain JSON POST) and there's no real HTTP-generic device on this network
+// to verify a payload shape against, so this fails loudly rather than guessing.
+const pushUser = async (device) => {
+  throw new DeviceProtocolError(`Pushing users to ${device.name} is not supported for the "http-generic" protocol.`);
+};
+
+module.exports = { fetchUsers, fetchLogs, pushUser };

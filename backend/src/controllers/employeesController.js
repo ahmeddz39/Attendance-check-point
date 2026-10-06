@@ -1,5 +1,7 @@
 const { query, getClient } = require('../config/database');
-const { success, created, noContent, notFound, badRequest } = require('../utils/response');
+const { success, created, noContent, notFound, badRequest, serverError } = require('../utils/response');
+const { pushEmployeeToDevice } = require('../services/employeeDevicePush');
+const { DeviceProtocolError } = require('../services/attendanceDeviceAdapter');
 
 const WEEKDAYS = [1, 2, 3, 4, 5, 6, 7]; // ISODOW: 1=Mon..7=Sun
 
@@ -183,7 +185,22 @@ const updateEmployeeShifts = async (req, res) => {
   return getEmployeeShifts(req, res);
 };
 
+const pushEmployeeDevice = async (req, res) => {
+  const { id } = req.params;
+  const { rows } = await query(`SELECT * FROM employees WHERE id = $1`, [id]);
+  if (!rows.length) return notFound(res, 'Employee not found');
+
+  try {
+    const devicePush = await pushEmployeeToDevice(rows[0]);
+    const { rows: refreshed } = await query(`SELECT ${EMPLOYEE_FIELDS} FROM employees WHERE id = $1`, [id]);
+    return success(res, { ...sanitizeForRole(refreshed[0], req.user.role), devicePush });
+  } catch (err) {
+    if (err instanceof DeviceProtocolError) return badRequest(res, err.message);
+    return serverError(res, err.message);
+  }
+};
+
 module.exports = {
   listEmployees, createEmployee, updateEmployee, deleteEmployee,
-  getEmployeeShifts, updateEmployeeShifts,
+  getEmployeeShifts, updateEmployeeShifts, pushEmployeeDevice,
 };
