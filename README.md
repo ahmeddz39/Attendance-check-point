@@ -6,6 +6,12 @@ ZKTeco biometric fingerprint/face scanners over the local network.
 
 For running this as a real, always-on internal app (not just local dev), see **[DEPLOY.md](./DEPLOY.md)**.
 
+> **Looking to just install this on a Windows machine, not develop it?** Use the
+> self-contained installer instead of the steps below — it bundles Node.js,
+> PostgreSQL and the app itself, needs nothing downloaded on the target machine,
+> and sets everything up through a normal installer wizard. See
+> [`installer/README.md`](./installer/README.md).
+
 ---
 
 ## Stack
@@ -41,6 +47,13 @@ For running this as a real, always-on internal app (not just local dev), see **[
 ```
 
 ---
+
+## Prerequisites
+
+- Node.js 18+
+- PostgreSQL 14+ (running locally or reachable over the network)
+- A ZKTeco biometric scanner on the same LAN, if you want device sync — the
+  rest of the app works fine without one
 
 ## Quick start (local development)
 
@@ -146,3 +159,11 @@ running the backend is on the same physical/LAN network as the scanners — see
 | admin   | Full access + user management              |
 | analyst | Read/write reports + analytics + ingest    |
 | viewer  | Read-only access to reports + analytics    |
+
+---
+
+## License
+
+This is proprietary software. The source is visible here for development and
+deployment purposes, but no license to use, copy, modify, or redistribute it
+is granted. All rights reserved.
