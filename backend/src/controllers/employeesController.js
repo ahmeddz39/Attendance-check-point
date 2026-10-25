@@ -46,6 +46,24 @@ const listEmployees = async (req, res) => {
   return success(res, rows.map((row) => sanitizeForRole(row, req.user.role)));
 };
 
+// Attendance logs that arrived before this employee had a device_user_id (e.g. enrolled
+// directly on the device instead of pushed from the app) are stored with employee_id NULL
+// and never get re-matched on their own -- deviceSync.js only resolves employee_id at
+// insert time, and a synced device never re-sends a log it already delivered. So whenever
+// an employee's device_user_id is (re)assigned, retroactively claim any already-stored
+// unmatched logs for that device_user_id, same device-scoping rule used at sync time.
+const reconcileUnmatchedAttendanceLogs = async (employee) => {
+  if (!employee?.device_user_id) return;
+  await query(
+    `UPDATE attendance_logs
+        SET employee_id = $1
+      WHERE device_user_id = $2
+        AND employee_id IS NULL
+        AND ($3::uuid IS NULL OR device_id = $3)`,
+    [employee.id, employee.device_user_id, employee.primary_device_id]
+  );
+};
+
 const createEmployee = async (req, res) => {
   const isAdmin = req.user.role === 'admin';
   const {
@@ -67,6 +85,7 @@ const createEmployee = async (req, res) => {
     RETURNING ${EMPLOYEE_FIELDS}
   `, [employeeCode, primaryDeviceId, deviceUid, deviceUserId, deviceRole, cardNumber, firstName, lastName, email, phone, department, position, salaryType, hourlyRate, monthlySalary, standardHours, isActive, JSON.stringify(metadata), leaveBalanceAdjustment]);
 
+  await reconcileUnmatchedAttendanceLogs(rows[0]);
   return created(res, sanitizeForRole(rows[0], req.user.role));
 };
 
@@ -107,6 +126,7 @@ const updateEmployee = async (req, res) => {
   `, [employeeCode, primaryDeviceId, deviceUid, deviceUserId, deviceRole, cardNumber, firstName, lastName, email, phone, department, position, salaryType, hourlyRate, monthlySalary, standardHours, isActive, metadata ? JSON.stringify(metadata) : null, leaveBalanceAdjustment, req.params.id]);
 
   if (!rows.length) return notFound(res, 'Employee not found');
+  await reconcileUnmatchedAttendanceLogs(rows[0]);
   return success(res, sanitizeForRole(rows[0], req.user.role));
 };
 
